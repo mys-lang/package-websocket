@@ -1,6 +1,8 @@
 Websocket
 =========
 
+!!! UNDER CONSTRUCTION, DOES NOT YET WORK !!!
+
 Websockets in the `Mys programming language`_.
 
 Documentation: https://mys-package-websocket.readthedocs.io/en/latest/
