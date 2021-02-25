@@ -1,0 +1,38 @@
+from tcp.client import Client as TcpClient
+
+class Client:
+    _tcp_client: TcpClient
+
+    def connect(self, uri: string):
+        """Connect to given server.
+
+        """
+
+    def disconnect(self):
+        """Disconnect from the server.
+        
+        """
+
+    def send(self, data: bytes):
+        """Send a binary frame to the server.
+
+        """
+
+    def recv(self) -> bytes:
+        """Receive a binary frame from the server.
+
+        """
+
+        return None
+
+    def send_string(self, data: string):
+        """Send a text frame to the server.
+
+        """
+
+    def recv_string(self) -> string:
+        """Receive a text frame from the server.
+
+        """
+
+        return None
