@@ -3,8 +3,8 @@ from websocket import Handler
 
 class MyHandler(Handler):
 
-    def on_text(self, data: bytes):
-        print(string(data))
+    def on_text(self, data: string):
+        print(data)
 
 def main():
     client = Client(MyHandler())
