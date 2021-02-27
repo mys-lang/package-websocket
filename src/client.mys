@@ -1,38 +1,136 @@
 from tcp.client import Client as TcpClient
 
+@enum(u8)
+class FrameType:
+    Text = 1
+    Binary = 2
+
+@trait
+class Handler:
+
+    def on_message(self, data: bytes):
+        """Called when a message has been received from the server.
+
+        """
+
+class ReaderFiber(Fiber):
+    _tcp_client: TcpClient
+    _header: bytes
+    _handler: Handler
+
+    def _read_frame(self):
+        self._tcp_client.read_into(self._header, 0, 2)
+        frame_type = FrameType(self._header)
+        data_size = self._header[1] & ~INET_HTTP_WEBSOCKET_MASK
+
+        if data_size == 126:
+            self._tcp_client.read_into(self._header, 2, 2)
+            data_size = (self._header[2] << 8 | self._header[3])
+        elif data_size == 127:
+            self._tcp_client.read_into(self._header, 2, 8)
+            data_size = ((self._header[6] << 24)
+                         | (self._header[7] << 16)
+                         | (self._header[8] << 8)
+                         | self._header[9])
+        data = self._tcp_client.read(data_size)
+
+    def _handle_ping(self, data: bytes):
+        pass
+
+    def _handle_pong(self, data: bytes):
+        pass
+
+    def _handle_text(self, data: bytes):
+        self._handler.on_message(data)
+
+    def _handle_binary(self, data: bytes):
+        self._handler.on_message(data)
+
+    def run(self):
+        while True:
+            type, data = self._read_message()
+
+            match type:
+                case FrameType.Ping:
+                    self._handle_ping(data)
+                case FrameType.Pong:
+                    self._handle_pong(data)
+                case FrameType.Text:
+                    self._handle_text(data)
+                case FrameType.Binary:
+                    self._handle_binary(data)
+
 class Client:
     _tcp_client: TcpClient
+    _header: bytes
+    _reader_fiber: ReaderFiber
+
+    def __init__(self, handler: Handler):
+        self._tcp_client = TcpClient()
+        self._header = bytes(16)
+        self._reader_fiber = ReaderFiber(handler)
 
     def connect(self, uri: string):
         """Connect to given server.
 
         """
 
+        self._tcp_client.write(f"GET {path} HTTP/1.1\r\n"
+                               f"Host: {host}\r\n"
+                               "Upgrade: WebSocket\r\n"
+                               "Connection: Upgrade\r\n"
+                               "Origin: MysWebSocketClient\r\n"
+                               "\r\n".to_utf8())
+        line = self._read_line()
+
+        if line != "HTTP/1.1 101":
+            raise
+
+        while self._read_line() != "":
+            pass
+
     def disconnect(self):
         """Disconnect from the server.
-        
-        """
-
-    def send(self, data: bytes):
-        """Send a binary frame to the server.
 
         """
 
-    def recv(self) -> bytes:
-        """Receive a binary frame from the server.
+        self._tcp_client.disconnect()
+
+    def send(self, data: bytes, frame_type: FrameType):
+        """Send a binary or text frame to the server.
 
         """
 
-        return None
+        header_size = 2
+        data_size = len(data)
+        self._header[0] = (INET_HTTP_WEBSOCKET_FIN | type)
 
-    def send_string(self, data: string):
-        """Send a text frame to the server.
+        if data_size < 126:
+            self._header[1] = (INET_HTTP_WEBSOCKET_MASK | data_size)
+        elif data_size < 65536:
+            self._header[1] = (INET_HTTP_WEBSOCKET_MASK | 126)
+            self._header[2] = ((data_size >> 8) & 0xff)
+            self._header[3] = ((data_size >> 0) & 0xff)
+            header_size += 2
+        else:
+            self._header[1] = (INET_HTTP_WEBSOCKET_MASK | 127)
+            self._header[2] = 0
+            self._header[3] = 0
+            self._header[4] = 0
+            self._header[5] = 0
+            self._header[6] = ((data_size >> 24) & 0xff)
+            self._header[7] = ((data_size >> 16) & 0xff)
+            self._header[8] = ((data_size >>  8) & 0xff)
+            self._header[9] = ((data_size >>  0) & 0xff)
+            header_size += 8
 
-        """
+        header[header_size + 0] = 0
+        header[header_size + 1] = 0
+        header[header_size + 2] = 0
+        header[header_size + 3] = 0
+        header_size += 4
 
-    def recv_string(self) -> string:
-        """Receive a text frame from the server.
-
-        """
-
-        return None
+        self._write_lock.acquire()
+        self._tcp_client.write_from(self._header, 0, header_size)
+        self._tcp_client.write_from(data, 0, data_size)
+        self._write_lock.release()

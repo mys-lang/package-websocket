@@ -1,0 +1,22 @@
+from websocket import Client
+from websocket import Handler
+
+class MyHandler(Handler):
+    
+    def on_message(self, data: bytes):
+        print(string(data))
+    
+def main():
+    client = Client(MyHandler())
+    print("Connecting to localhost:20000.")
+    client.connect("ws://localhost:20000")
+    
+    while True:
+	line = input(">")
+
+        if line == "exit":
+            break
+        
+        client.send(line)
+
+    client.disconnect()
