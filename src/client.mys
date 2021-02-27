@@ -8,8 +8,13 @@ class FrameType:
 @trait
 class Handler:
 
-    def on_message(self, data: bytes):
-        """Called when a message has been received from the server.
+    def on_binary(self, data: bytes):
+        """Called when a binary message has been received from the server.
+
+        """
+
+    def on_text(self, data: string):
+        """Called when a text message has been received from the server.
 
         """
 
@@ -96,8 +101,8 @@ class Client:
 
         self._tcp_client.disconnect()
 
-    def send(self, data: bytes, frame_type: FrameType):
-        """Send a binary or text frame to the server.
+    def send_binary(self, data: bytes):
+        """Send a binary message to the server.
 
         """
 
@@ -134,3 +139,8 @@ class Client:
         self._tcp_client.write_from(self._header, 0, header_size)
         self._tcp_client.write_from(data, 0, data_size)
         self._write_lock.release()
+
+    def send_text(self, data: string):
+        """Send a text message to the server.
+
+        """
