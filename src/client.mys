@@ -26,8 +26,6 @@ class Handler:
     def on_text(self, data: string):
         """Called when a text message has been received from the server.
 
-        This method is called from the websocket reader fiber.
-
         """
 
 class _DefaultHandler(Handler):
