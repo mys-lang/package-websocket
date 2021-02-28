@@ -14,7 +14,7 @@ import toml
 
 # -- Project information -----------------------------------------------------
 
-project = 'argparse'
+project = 'websocket'
 # copyright = ''
 author = 'Erik Moqvist'
 

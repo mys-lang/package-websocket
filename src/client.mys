@@ -1,5 +1,8 @@
 from tcp.client import Client as TcpClient
 
+class WebsocketError(Error):
+    pass
+
 @enum(u8)
 class _OpCode:
     Continuation = 0
@@ -11,11 +14,12 @@ class _OpCode:
 
 @trait
 class Handler:
+    """All methods are called from the websocket reader fiber.
+
+    """
 
     def on_binary(self, data: bytes):
         """Called when a binary message has been received from the server.
-
-        This method is called from the websocket reader fiber.
 
         """
 
@@ -116,6 +120,11 @@ class _ReaderFiber(Fiber):
                     self._handle_data(op_code, data)
 
 class Client:
+    """A websocket client, used to connect and communicate with a
+    websocket server.
+
+    """
+
     _tcp_client: TcpClient
     _header: bytes
     _reader_fiber: _ReaderFiber
@@ -123,6 +132,12 @@ class Client:
     _text_queue: Queue[string]
 
     def __init__(self, handler: Handler = None):
+        """Create a client. Give handler as None to use the default handler
+        which puts received messages on message queues that are read
+        from with the receive_binary() and receive_text() methods.
+
+        """
+
         if handler is None:
             self._binary_queue = Queue[bytes]()
             self._text_queue = Queue[string]()
@@ -135,6 +150,7 @@ class Client:
         self._header = bytes(16)
         self._reader_fiber = _ReaderFiber(handler)
 
+    @raises(WebsocketError)
     def connect(self, uri: string):
         """Connect to given server.
 
@@ -162,9 +178,6 @@ class Client:
         self._tcp_client.disconnect()
 
     def _send(self, data: bytes, op_code: _OpCode):
-        if not self._connected:
-            raise ConnectionClosedError()
-
         header_size = 2
         data_size = len(data)
         self._header[0] = (INET_HTTP_WEBSOCKET_FIN | op_code)
@@ -202,10 +215,6 @@ class Client:
     def send_binary(self, data: bytes):
         """Send given data to the server as a binary message.
 
-        This is a blocking call.
-
-        Raises an error if disconnected.
-
         """
 
         self._send(data, _OpCode.Binary)
@@ -213,44 +222,34 @@ class Client:
     def send_text(self, data: string):
         """Send given data to the server as a text message.
 
-        This is a blocking call.
-
-        Raises an error if disconnected.
-
         """
 
         self._send(data.to_utf8(), _OpCode.Text)
 
+    @raises(WebsocketError)
     def receive_binary(self) -> bytes:
         """Receive a binary message to the server. This method can only be
         used if no handler was given to __init__().
-
-        This is a blocking call.
-
-        Raises an error if disconnected.
 
         """
 
         message = self._binary_queue.get()
 
         if message is None:
-            raise ConnectionClosedError()
+            raise WebsocketError()
 
         return message
 
+    @raises(WebsocketError)
     def receive_text(self) -> string:
         """Receive a text message to the server. This method can only be used
         if no handler was given to __init__().
-
-        This is a blocking call.
-
-        Raises an error if disconnected.
 
         """
 
         message = self._text_queue.get()
 
         if message is None:
-            raise ConnectionClosedError()
+            raise WebsocketError()
 
         return message
