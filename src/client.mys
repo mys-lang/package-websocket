@@ -49,7 +49,7 @@ class ReaderFiber(Fiber):
 
     def _read_frame(self):
         self._tcp_client.read_into(self._header, 0, 2)
-        frame_type = FrameType(self._header)
+        op_code = _OpCode(self._header)
         data_size = self._header[1] & ~INET_HTTP_WEBSOCKET_MASK
 
         if data_size == 126:
@@ -80,13 +80,13 @@ class ReaderFiber(Fiber):
             type, data = self._read_message()
 
             match type:
-                case FrameType.Ping:
+                case _OpCode.Ping:
                     self._handle_ping(data)
-                case FrameType.Pong:
+                case _OpCode.Pong:
                     self._handle_pong(data)
-                case FrameType.Text:
+                case _OpCode.Text:
                     self._handle_text(data)
-                case FrameType.Binary:
+                case _OpCode.Binary:
                     self._handle_binary(data)
 
 class Client:
@@ -131,7 +131,7 @@ class Client:
     def disconnect(self):
         self._tcp_client.disconnect()
 
-    def _send(self, data: bytes, type: FrameType):
+    def _send(self, data: bytes, type: _OpCode):
         if not self._connected:
             raise ConnectionClosedError()
 
@@ -178,7 +178,7 @@ class Client:
 
         """
 
-        self._send(data, FrameType.Binary)
+        self._send(data, _OpCode.Binary)
 
     def send_text(self, data: string):
         """Send given data to the server as a text message.
@@ -189,7 +189,7 @@ class Client:
 
         """
 
-        self._send(data.to_utf8(), FrameType.Text)
+        self._send(data.to_utf8(), _OpCode.Text)
 
     def recv_binary(self) -> bytes:
         """Receive a binary message to the server. This method can only be

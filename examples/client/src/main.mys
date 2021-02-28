@@ -1,5 +1,4 @@
 from websocket.client import Client
-from websocket.client import Handler
 from fiber import Fiber
 
 @trait
@@ -26,6 +25,7 @@ class ReaderFiber(Fiber):
                 self.queue.put(TextMessage(message))
             except ConnectionClosedError:
                 self.queue.put(DisconnectedMessage())
+                break
 
 
 class InputFiber(Fiber):
@@ -38,7 +38,7 @@ class InputFiber(Fiber):
 
 def main():
     queue = Queue[Message]()
-    websocket = Client("ws://localhost:20000", WebsocketHandler(queue))
+    websocket = Client("ws://localhost:20000")
     input_fiber = InputFiber(queue)
     running = True
 
