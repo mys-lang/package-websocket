@@ -1,9 +1,13 @@
 from tcp.client import Client as TcpClient
 
 @enum(u8)
-class FrameType:
+class _OpCode:
+    Continuation = 0
     Text = 1
     Binary = 2
+    Close = 8
+    Ping = 9
+    Pong = 10
 
 @trait
 class Handler:
@@ -11,10 +15,14 @@ class Handler:
     def on_binary(self, data: bytes):
         """Called when a binary message has been received from the server.
 
+        This method is called from the websocket reader fiber.
+
         """
 
     def on_text(self, data: string):
         """Called when a text message has been received from the server.
+
+        This method is called from the websocket reader fiber.
 
         """
 
@@ -115,7 +123,7 @@ class Client:
         line = self._read_line()
 
         if line != "HTTP/1.1 101":
-            raise
+            raise WebsocketError("Connection failed.")
 
         while self._read_line() != "":
             pass
@@ -162,7 +170,7 @@ class Client:
         self._write_lock.release()
 
     def send_binary(self, data: bytes):
-        """Send a binary message to the server.
+        """Send given data to the server as a binary message.
 
         This is a blocking call.
 
@@ -173,7 +181,7 @@ class Client:
         self._send(data, FrameType.Binary)
 
     def send_text(self, data: string):
-        """Send a text message to the server.
+        """Send given data to the server as a text message.
 
         This is a blocking call.
 
