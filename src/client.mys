@@ -18,6 +18,22 @@ class Handler:
 
         """
 
+class DefaultHandler(Handler):
+    _binary_queue: Queue[bytes]
+    _text_queue: Queue[string]
+
+    def __init__(self,
+                 binary_queue: Queue[bytes],
+                 text_queue: Queue[string]):
+        self._binary_queue = binary_queue
+        self._text_queue = text_queue
+
+    def on_binary(self, data: bytes):
+        self._binary_queue.put(data)
+
+    def on_text(self, data: string):
+        self._text_queue.put(data)
+
 class ReaderFiber(Fiber):
     _tcp_client: TcpClient
     _header: bytes
@@ -69,8 +85,18 @@ class Client:
     _tcp_client: TcpClient
     _header: bytes
     _reader_fiber: ReaderFiber
+    _binary_queue: Queue[bytes]
+    _text_queue: Queue[string]
 
-    def __init__(self, handler: Handler):
+    def __init__(self, handler: Handler = None):
+        if handler is None:
+            self._binary_queue = Queue[bytes]()
+            self._text_queue = Queue[string]()
+            handler = DefaultHandler(self._binary_queue, self._text_queue)
+        else:
+            self._binary_queue = None
+            self._text_queue = None
+
         self._tcp_client = TcpClient()
         self._header = bytes(16)
         self._reader_fiber = ReaderFiber(handler)
@@ -95,16 +121,11 @@ class Client:
             pass
 
     def disconnect(self):
-        """Disconnect from the server.
-
-        """
-
         self._tcp_client.disconnect()
 
-    def send_binary(self, data: bytes):
-        """Send a binary message to the server.
-
-        """
+    def _send(self, data: bytes, type: FrameType):
+        if not self._connected:
+            raise ConnectionClosedError()
 
         header_size = 2
         data_size = len(data)
@@ -140,7 +161,58 @@ class Client:
         self._tcp_client.write_from(data, 0, data_size)
         self._write_lock.release()
 
+    def send_binary(self, data: bytes):
+        """Send a binary message to the server.
+
+        This is a blocking call.
+
+        Raises an error if disconnected.
+
+        """
+
+        self._send(data, FrameType.Binary)
+
     def send_text(self, data: string):
         """Send a text message to the server.
 
+        This is a blocking call.
+
+        Raises an error if disconnected.
+
         """
+
+        self._send(data.to_utf8(), FrameType.Text)
+
+    def recv_binary(self) -> bytes:
+        """Receive a binary message to the server. This method can only be
+        used if no handler was given to __init__().
+
+        This is a blocking call.
+
+        Raises an error if disconnected.
+
+        """
+
+        message = self._binary_queue.get()
+
+        if message is None:
+            raise ConnectionClosedError()
+
+        return message
+
+    def recv_text(self) -> string:
+        """Receive a text message to the server. This method can only be used
+        if no handler was given to __init__().
+
+        This is a blocking call.
+
+        Raises an error if disconnected.
+
+        """
+
+        message = self._text_queue.get()
+
+        if message is None:
+            raise ConnectionClosedError()
+
+        return message

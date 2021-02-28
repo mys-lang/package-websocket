@@ -1,22 +1,68 @@
-from websocket import Client
-from websocket import Handler
+from websocket.client import Client
+from websocket.client import Handler
+from fiber import Fiber
 
-class MyHandler(Handler):
+@trait
+class Message:
+    pass
 
-    def on_text(self, data: string):
-        print(data)
+class TextMessage(Message):
+    data: string
+
+class DisconnectedMessage(Message):
+    pass
+
+class InputMessage(Message):
+    line: string
+
+class ReaderFiber(Fiber):
+    websocket: Client
+    queue: Queue[Message]
+
+    def run(self):
+        while True:
+            try:
+                message = self.websocket.recv_text()
+                self.queue.put(TextMessage(message))
+            except ConnectionClosedError:
+                self.queue.put(DisconnectedMessage())
+
+
+class InputFiber(Fiber):
+    queue: Queue[Message]
+
+    def run(self):
+        while True:
+            line = input(">")
+            self.queue.put(InputMessage(line))
 
 def main():
-    client = Client(MyHandler())
-    print("Connecting to localhost:20000.")
-    client.connect("ws://localhost:20000")
+    queue = Queue[Message]()
+    websocket = Client("ws://localhost:20000", WebsocketHandler(queue))
+    input_fiber = InputFiber(queue)
+    running = True
 
-    while True:
-        line = input(">")
+    while running:
+        websocket.connect()
+        reader_fiber = ReaderFiber(websocket, queue)
+        reader_fiber.start()
+        input_fiber.start()
 
-        if line == "exit":
-            break
+        while True:
+            match queue.get():
+                case InputMessage() as message:
+                    if message.line == "exit":
+                        print("Exiting.")
+                        running = False
+                        websocket.disconnect()
+                    else:
+                        try:
+                            websocket.send_text(message.line)
+                        except ConnectionClosedError:
+                            break
+                case TextMessage() as message:
+                    print(message.data)
+                case DisconnectedMessage():
+                    break
 
-        client.send_text(line)
-
-    client.disconnect()
+        reader_fiber.join()
