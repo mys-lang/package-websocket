@@ -1,65 +1,8 @@
 from websocket.client import Client
-from fiber import Fiber
-
-@trait
-class Message:
-    pass
-
-class TextMessage(Message):
-    data: string
-
-class DisconnectedMessage(Message):
-    pass
-
-class InputMessage(Message):
-    line: string
-
-class ReaderFiber(Fiber):
-    websocket: Client
-    queue: Queue[Message]
-
-    def run(self):
-        while True:
-            message = self.websocket.recv_text()
-
-            if message is None:
-                self.queue.put(DisconnectedMessage())
-                break
-
-            self.queue.put(TextMessage(message))
-
-class InputFiber(Fiber):
-    queue: Queue[Message]
-
-    def run(self):
-        while True:
-            line = input(">")
-            self.queue.put(InputMessage(line))
 
 def main():
-    queue = Queue[Message]()
-    websocket = Client("ws://localhost:20000")
-    input_fiber = InputFiber(queue)
-    running = True
-
-    while running:
-        websocket.connect()
-        reader_fiber = ReaderFiber(websocket, queue)
-        reader_fiber.start()
-        input_fiber.start()
-
-        while True:
-            match queue.get():
-                case InputMessage() as message:
-                    if message.line == "exit":
-                        print("Exiting.")
-                        running = False
-                        websocket.disconnect()
-                    else:
-                        websocket.send_text(message.line)
-                case TextMessage() as message:
-                    print(message.data)
-                case DisconnectedMessage():
-                    break
-
-        reader_fiber.join()
+    client = Client("ws://localhost:20000")
+    client.connect()
+    self.websocket.send_text("Hello!")
+    print(self.websocket.receive_text())
+    connect.disconnect()

@@ -221,7 +221,7 @@ class Client:
 
         self._send(data.to_utf8(), _OpCode.Text)
 
-    def recv_binary(self) -> bytes:
+    def receive_binary(self) -> bytes:
         """Receive a binary message to the server. This method can only be
         used if no handler was given to __init__().
 
@@ -238,7 +238,7 @@ class Client:
 
         return message
 
-    def recv_text(self) -> string:
+    def receive_text(self) -> string:
         """Receive a text message to the server. This method can only be used
         if no handler was given to __init__().
 
