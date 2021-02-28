@@ -26,7 +26,7 @@ class Handler:
 
         """
 
-class DefaultHandler(Handler):
+class _DefaultHandler(Handler):
     _binary_queue: Queue[bytes]
     _text_queue: Queue[string]
 
@@ -42,12 +42,19 @@ class DefaultHandler(Handler):
     def on_text(self, data: string):
         self._text_queue.put(data)
 
-class ReaderFiber(Fiber):
+class _ReaderFiber(Fiber):
     _tcp_client: TcpClient
     _header: bytes
     _handler: Handler
+    _data_op_code: _OpCode
+    _data: bytes
+    _header: bytes
 
-    def _read_frame(self):
+    def __init__(self):
+        self._data = None
+        self._header = bytes(16)
+
+    def _read_frame(self) -> (_OpCode, bytes):
         self._tcp_client.read_into(self._header, 0, 2)
         op_code = _OpCode(self._header)
         data_size = self._header[1] & ~INET_HTTP_WEBSOCKET_MASK
@@ -61,38 +68,57 @@ class ReaderFiber(Fiber):
                          | (self._header[7] << 16)
                          | (self._header[8] << 8)
                          | self._header[9])
+
         data = self._tcp_client.read(data_size)
 
-    def _handle_ping(self, data: bytes):
-        pass
+        return op_code, data
 
-    def _handle_pong(self, data: bytes):
-        pass
+    def _handle_close(self):
+        print("Close.")
 
-    def _handle_text(self, data: bytes):
-        self._handler.on_message(data)
+    def _handle_ping(self):
+        print("Ping.")
 
-    def _handle_binary(self, data: bytes):
-        self._handler.on_message(data)
+    def _handle_pong(self):
+        print("Pong.")
+
+    def _handle_data(self, op_code: _OpCode, data: bytes):
+        if self._data is None:
+            self._data_op_code = op_code
+            self._data = data
+        elif op_code == _OpCode.Continuation:
+            self._data += data
+        else:
+            self._data = None
+            return
+
+        if not frame.fin:
+            return
+
+        match self._data_op_code:
+            case _OpCode.Text:
+                self._handler.on_text(string(self._data))
+            case _OpCode.Binary:
+                self._handler.on_binary(self._data)
 
     def run(self):
         while True:
-            type, data = self._read_message()
+            op_code, data = self._read_frame()
 
-            match type:
+            match op_code:
+                case _OpCode.Close:
+                    self._handle_close()
                 case _OpCode.Ping:
-                    self._handle_ping(data)
+                    self._handle_ping()
                 case _OpCode.Pong:
-                    self._handle_pong(data)
-                case _OpCode.Text:
-                    self._handle_text(data)
-                case _OpCode.Binary:
-                    self._handle_binary(data)
+                    self._handle_pong()
+                case _:
+                    self._handle_data(op_code, data)
 
 class Client:
     _tcp_client: TcpClient
     _header: bytes
-    _reader_fiber: ReaderFiber
+    _reader_fiber: _ReaderFiber
     _binary_queue: Queue[bytes]
     _text_queue: Queue[string]
 
@@ -100,14 +126,14 @@ class Client:
         if handler is None:
             self._binary_queue = Queue[bytes]()
             self._text_queue = Queue[string]()
-            handler = DefaultHandler(self._binary_queue, self._text_queue)
+            handler = _DefaultHandler(self._binary_queue, self._text_queue)
         else:
             self._binary_queue = None
             self._text_queue = None
 
         self._tcp_client = TcpClient()
         self._header = bytes(16)
-        self._reader_fiber = ReaderFiber(handler)
+        self._reader_fiber = _ReaderFiber(handler)
 
     def connect(self, uri: string):
         """Connect to given server.
@@ -129,15 +155,19 @@ class Client:
             pass
 
     def disconnect(self):
+        """Disconnect from the server.
+
+        """
+
         self._tcp_client.disconnect()
 
-    def _send(self, data: bytes, type: _OpCode):
+    def _send(self, data: bytes, op_code: _OpCode):
         if not self._connected:
             raise ConnectionClosedError()
 
         header_size = 2
         data_size = len(data)
-        self._header[0] = (INET_HTTP_WEBSOCKET_FIN | type)
+        self._header[0] = (INET_HTTP_WEBSOCKET_FIN | op_code)
 
         if data_size < 126:
             self._header[1] = (INET_HTTP_WEBSOCKET_MASK | data_size)
