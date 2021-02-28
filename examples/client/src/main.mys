@@ -20,13 +20,13 @@ class ReaderFiber(Fiber):
 
     def run(self):
         while True:
-            try:
-                message = self.websocket.recv_text()
-                self.queue.put(TextMessage(message))
-            except ConnectionClosedError:
+            message = self.websocket.recv_text()
+
+            if message is None:
                 self.queue.put(DisconnectedMessage())
                 break
 
+            self.queue.put(TextMessage(message))
 
 class InputFiber(Fiber):
     queue: Queue[Message]
@@ -56,10 +56,7 @@ def main():
                         running = False
                         websocket.disconnect()
                     else:
-                        try:
-                            websocket.send_text(message.line)
-                        except ConnectionClosedError:
-                            break
+                        websocket.send_text(message.line)
                 case TextMessage() as message:
                     print(message.data)
                 case DisconnectedMessage():
