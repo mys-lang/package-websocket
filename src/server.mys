@@ -48,4 +48,7 @@ class Handler:
         is automatically disconnected when this method returns (if not
         already disconnected).
 
+        `path` in the path as received in the HTTP request from the
+        client. For example "/info/299?name=Kalle&date=2021-03-01".
+
         """

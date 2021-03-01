@@ -150,7 +150,12 @@ class Client:
 
     @raises(WebsocketError)
     def connect(self, host: string, port: i64, path: string = "/"):
-        """Connect to given server.
+        """Connect to the server identified by given `host` and
+        `port`. Non-secure websockets normally use port 80, while
+        secure use port 443.
+
+        `path` in the path as sent in the HTTP request to the
+        server. For example "/info/299?name=Kalle&date=2021-03-01".
 
         """
 
