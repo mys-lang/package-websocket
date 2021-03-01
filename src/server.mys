@@ -41,7 +41,7 @@ class Client:
 @trait
 class Handler:
 
-    def run(self, client: Client):
+    def run(self, client: Client, path: string):
         """Called in a new fiber when a client has been accepted. The client
         is automatically disconnected when this method returns (if not
         already disconnected).
