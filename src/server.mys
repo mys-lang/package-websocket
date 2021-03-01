@@ -1,0 +1,32 @@
+class Server:
+    _handler: Handler
+
+    def __init__(self, handler: Handler):
+        self._handler = handler
+
+    def serve(self, address: string, port: i64):
+        """Serve clients on given address and port.
+
+        """
+
+class Client:
+
+    def send_text(self):
+        """Send given data to the client as a text message.
+
+        """
+
+    def receive_text(self):
+        """Receive a text message from the client.
+
+        """
+
+@trait
+class Handler:
+
+    def run(self, client: Client):
+        """Called in a new fiber when a client has been accepted. The client
+        is automatically disconnected when this method returns (if not
+        already disconnected).
+
+        """

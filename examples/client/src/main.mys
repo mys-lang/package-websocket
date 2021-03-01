@@ -2,7 +2,7 @@ from websocket.client import Client
 
 def main():
     client = Client()
-    client.connect("ws://localhost:20000")
+    client.connect("localhost", 20000)
     self.websocket.send_text("Hello!")
     print(self.websocket.receive_text())
     connect.disconnect()
