@@ -239,7 +239,7 @@ class Client:
         message = self._binary_queue.get()
 
         if message is None:
-            raise WebsocketError()
+            raise WebsocketError("Disconnected.")
 
         return message
 
@@ -253,6 +253,6 @@ class Client:
         message = self._text_queue.get()
 
         if message is None:
-            raise WebsocketError()
+            raise WebsocketError("Disconnected.")
 
         return message
