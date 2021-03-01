@@ -116,8 +116,7 @@ class _ReaderFiber(Fiber):
                     self._handle_data(op_code, data)
 
 class Client:
-    """A websocket client, used to connect and communicate with a
-    websocket server.
+    """A websocket client, used to communicate with a websocket server.
 
     """
 
@@ -146,8 +145,7 @@ class Client:
         self._header = bytes(16)
         self._reader_fiber = _ReaderFiber(handler)
 
-    @raises(TcpError)
-    @raises(WebsocketError)
+    @raises(TcpError, WebsocketError)
     def connect(self, host: string, port: u32, path: string = "/"):
         """Connect to the server identified by given `host` and
         `port`. Non-secure websockets normally use port 80, while
@@ -231,8 +229,8 @@ class Client:
 
     def receive_binary(self) -> bytes:
         """Receive a binary message from the server. This method can only be
-        used if no handler was given to __init__(). Returns None if
-        the server has closed the connection.
+        used if no handler was passed to __init__(). Returns None if
+        disconnected.
 
         """
 
@@ -240,8 +238,8 @@ class Client:
 
     def receive_text(self) -> string:
         """Receive a text message from the server. This method can only be
-        used if no handler was given to __init__(). Returns None if
-        the server has closed the connection.
+        used if no handler was passed to __init__(). Returns None if
+        disconnected.
 
         """
 
