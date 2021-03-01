@@ -27,20 +27,17 @@ Server side
 
 .. code-block:: python
 
-   from websocket.server import Server
-   from websocket.server import Client
-   from websocket.server import Handler
+   from websocket import Server
 
-   class MyHandler(Handler):
+   def main():
+       server = Server()
+       server.listen("localhost", 20000)
 
-       def run(self, client: Client, path: string):
+       while True:
+           client = server.accept()
            message = client.receive_text()
            print(f"Got: {message}")
            client.send_text(f"Message: '{message}'")
-
-   def main():
-       server = Server(MyHandler())
-       client.serve("localhost", 20000)
 
 Functions and types
 ===================
