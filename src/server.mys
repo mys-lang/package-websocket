@@ -1,10 +1,11 @@
 class Client:
     """An accepted websocket client.
+    
+    `path` is the path received in the HTTP request from the client.
 
     """
 
     path: string
-    "The HTTP request path as received from the client."
 
     def send_binary(self, data: bytes):
         """Send given data to the client as a binary message.
