@@ -32,9 +32,7 @@ class _DefaultHandler(Handler):
     _binary_queue: Queue[bytes]
     _text_queue: Queue[string]
 
-    def __init__(self,
-                 binary_queue: Queue[bytes],
-                 text_queue: Queue[string]):
+    def __init__(self, binary_queue: Queue[bytes], text_queue: Queue[string]):
         self._binary_queue = binary_queue
         self._text_queue = text_queue
 
@@ -148,8 +146,9 @@ class Client:
         self._header = bytes(16)
         self._reader_fiber = _ReaderFiber(handler)
 
+    @raises(TcpError)
     @raises(WebsocketError)
-    def connect(self, host: string, port: i64, path: string = "/"):
+    def connect(self, host: string, port: u32, path: string = "/"):
         """Connect to the server identified by given `host` and
         `port`. Non-secure websockets normally use port 80, while
         secure use port 443.
@@ -159,6 +158,7 @@ class Client:
 
         """
 
+        self._tcp_client.connect(host, port)
         self._tcp_client.write(f"GET {path} HTTP/1.1\r\n"
                                f"Host: {host}\r\n"
                                "Upgrade: WebSocket\r\n"
@@ -231,7 +231,8 @@ class Client:
 
     def receive_binary(self) -> bytes:
         """Receive a binary message from the server. This method can only be
-        used if no handler was given to __init__().
+        used if no handler was given to __init__(). Returns None if
+        the server has closed the connection.
 
         """
 
@@ -239,7 +240,8 @@ class Client:
 
     def receive_text(self) -> string:
         """Receive a text message from the server. This method can only be
-        used if no handler was given to __init__().
+        used if no handler was given to __init__(). Returns None if
+        the server has closed the connection.
 
         """
 

@@ -27,7 +27,7 @@ Server side
 
 .. code-block:: python
 
-   from websocket import Server
+   from websocket.server import Server
 
    def main():
        server = Server()

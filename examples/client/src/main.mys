@@ -1,4 +1,4 @@
-from websocket import Client
+from websocket.client import Client
 
 def main():
     client = Client()
