@@ -1,4 +1,8 @@
 class Server:
+    """A websocker server.
+
+    """
+
     _handler: Handler
 
     def __init__(self, handler: Handler):
@@ -10,13 +14,26 @@ class Server:
         """
 
 class Client:
+    """An accepted websocket client.
 
-    def send_text(self):
+    """
+
+    def send_binary(self, data: bytes):
+        """Send given data to the client as a binary message.
+
+        """
+
+    def send_text(self, data: string):
         """Send given data to the client as a text message.
 
         """
 
-    def receive_text(self):
+    def receive_binary(self) -> bytes:
+        """Receive a binary message from the client.
+
+        """
+
+    def receive_text(self) -> string:
         """Receive a text message from the client.
 
         """
