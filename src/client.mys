@@ -149,7 +149,7 @@ class Client:
         self._reader_fiber = _ReaderFiber(handler)
 
     @raises(WebsocketError)
-    def connect(self, uri: string):
+    def connect(self, host: string, port: i64, path: string = "/"):
         """Connect to given server.
 
         """
