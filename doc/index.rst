@@ -33,7 +33,7 @@ Server side
 
    class MyHandler(Handler):
 
-       def run(self, client: Client):
+       def run(self, client: Client, path: string):
            message = client.receive_text()
            print(f"Got: {message}")
            client.send_text(f"Message: '{message}'")
