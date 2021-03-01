@@ -1,18 +1,3 @@
-class Server:
-    """A websocker server.
-
-    """
-
-    _handler: Handler
-
-    def __init__(self, handler: Handler):
-        self._handler = handler
-
-    def serve(self, host: string, port: i64):
-        """Serve clients on given address and port.
-
-        """
-
 class Client:
     """An accepted websocket client.
 
@@ -28,27 +13,29 @@ class Client:
 
         """
 
-    @raises(WebsocketError)
     def receive_binary(self) -> bytes:
-        """Receive a binary message from the client.
+        """Receive a binary message from the client. Returns None if the
+        client has disconnected.
 
         """
 
-    @raises(WebsocketError)
     def receive_text(self) -> string:
-        """Receive a text message from the client.
+        """Receive a text message from the client. Returns None if the client
+        has disconnected.
 
         """
 
-@trait
-class Handler:
+class Server:
+    """A websocket server.
 
-    def run(self, client: Client, path: string):
-        """Called in a new fiber when a client has been accepted. The client
-        is automatically disconnected when this method returns (if not
-        already disconnected).
+    """
 
-        `path` in the path as received in the HTTP request from the
-        client. For example "/info/299?name=Kalle&date=2021-03-01".
+    def listen(self, host: string, port: u32):
+        """Start listening for clients on given address and port.
+
+        """
+
+    def accept(self) -> Client:
+        """Wait for a client to connect and accept it.
 
         """

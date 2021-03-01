@@ -229,30 +229,18 @@ class Client:
 
         self._send(data.to_utf8(), _OpCode.Text)
 
-    @raises(WebsocketError)
     def receive_binary(self) -> bytes:
         """Receive a binary message from the server. This method can only be
         used if no handler was given to __init__().
 
         """
 
-        message = self._binary_queue.get()
+        return self._binary_queue.get()
 
-        if message is None:
-            raise WebsocketError("Disconnected.")
-
-        return message
-
-    @raises(WebsocketError)
     def receive_text(self) -> string:
         """Receive a text message from the server. This method can only be
         used if no handler was given to __init__().
 
         """
 
-        message = self._text_queue.get()
-
-        if message is None:
-            raise WebsocketError("Disconnected.")
-
-        return message
+        return self._text_queue.get()
