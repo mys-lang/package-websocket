@@ -216,12 +216,18 @@ class Client:
     def send_binary(self, data: bytes):
         """Send given data to the server as a binary message.
 
+        This method never blocks, but instead enqueues the message if
+        the OS would block the write.
+
         """
 
         self._send(data, _OpCode.Binary)
 
     def send_text(self, data: string):
         """Send given data to the server as a text message.
+
+        This method never blocks, but instead enqueues the message if
+        the OS would block the write.
 
         """
 
