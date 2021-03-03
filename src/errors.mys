@@ -1,0 +1,3 @@
+class WebsocketError(Error):
+    pass
+ 

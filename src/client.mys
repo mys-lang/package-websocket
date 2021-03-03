@@ -1,7 +1,6 @@
+from fiber import Fiber
 from net.tcp.client import Client as TcpClient
-
-class WebsocketError(Error):
-    pass
+from .errors import WebsocketError
 
 @enum(u8)
 class _OpCode:
@@ -11,6 +10,8 @@ class _OpCode:
     Close = 8
     Ping = 9
     Pong = 10
+
+INET_HTTP_WEBSOCKET_MASK: u8 = 1
 
 @trait
 class Handler:
@@ -29,18 +30,20 @@ class Handler:
         """
 
 class _DefaultHandler(Handler):
-    _binary_queue: Queue[bytes]
-    _text_queue: Queue[string]
+    #_binary_queue: Queue[bytes]
+    # _text_queue: Queue[string]
 
-    def __init__(self, binary_queue: Queue[bytes], text_queue: Queue[string]):
-        self._binary_queue = binary_queue
-        self._text_queue = text_queue
+    # def __init__(self, binary_queue: Queue[bytes], text_queue: Queue[string]):
+    #     self._binary_queue = binary_queue
+    #     self._text_queue = text_queue
 
     def on_binary(self, data: bytes):
-        self._binary_queue.put(data)
+        # self._binary_queue.put(data)
+        pass
 
     def on_text(self, data: string):
-        self._text_queue.put(data)
+        # self._text_queue.put(data)
+        pass
 
 class _ReaderFiber(Fiber):
     _tcp_client: TcpClient
@@ -48,26 +51,24 @@ class _ReaderFiber(Fiber):
     _handler: Handler
     _data_op_code: _OpCode
     _data: bytes
-    _header: bytes
 
     def __init__(self):
         self._data = None
-        self._header = bytes(16)
 
     def _read_frame(self) -> (_OpCode, bytes):
-        self._tcp_client.read_into(self._header, 0, 2)
-        op_code = _OpCode(self._header)
-        data_size = self._header[1] & ~INET_HTTP_WEBSOCKET_MASK
+        header = self._tcp_client.read(2)
+        op_code = _OpCode(header[0])
+        data_size = u32(header[1] & ~INET_HTTP_WEBSOCKET_MASK)
 
         if data_size == 126:
-            self._tcp_client.read_into(self._header, 2, 2)
-            data_size = (self._header[2] << 8 | self._header[3])
+            header = self._tcp_client.read(2)
+            data_size = (u32(header[0]) << 8 | u32(header[1]))
         elif data_size == 127:
-            self._tcp_client.read_into(self._header, 2, 8)
-            data_size = ((self._header[6] << 24)
-                         | (self._header[7] << 16)
-                         | (self._header[8] << 8)
-                         | self._header[9])
+            header = self._tcp_client.read(8)
+            data_size = ((u32(header[4]) << 24)
+                         | (u32(header[5]) << 16)
+                         | (u32(header[6]) << 8)
+                         | u32(header[7]))
 
         data = self._tcp_client.read(data_size)
 
@@ -92,8 +93,8 @@ class _ReaderFiber(Fiber):
             self._data = None
             return
 
-        if not frame.fin:
-            return
+        #if not frame.fin:
+        #    return
 
         match self._data_op_code:
             case _OpCode.Text:
@@ -115,136 +116,136 @@ class _ReaderFiber(Fiber):
                 case _:
                     self._handle_data(op_code, data)
 
-class Client:
-    """A websocket client, used to communicate with a websocket server.
-
-    """
-
-    _tcp_client: TcpClient
-    _header: bytes
-    _reader_fiber: _ReaderFiber
-    _binary_queue: Queue[bytes]
-    _text_queue: Queue[string]
-
-    def __init__(self, handler: Handler = None):
-        """Create a client. Give handler as None to use the default handler
-        which puts received messages on message queues that are read
-        from with the receive_binary() and receive_text() methods.
-
-        """
-
-        if handler is None:
-            self._binary_queue = Queue[bytes]()
-            self._text_queue = Queue[string]()
-            handler = _DefaultHandler(self._binary_queue, self._text_queue)
-        else:
-            self._binary_queue = None
-            self._text_queue = None
-
-        self._tcp_client = TcpClient()
-        self._header = bytes(16)
-        self._reader_fiber = _ReaderFiber(handler)
-
-    @raises(TcpError, WebsocketError)
-    def connect(self, host: string, port: u32, path: string = "/"):
-        """Connect to the server identified by given `host` and
-        `port`. Non-secure websockets normally use port 80, while
-        secure use port 443.
-
-        `path` in the path as sent in the HTTP request to the
-        server. For example "/info/299?name=Kalle&date=2021-03-01".
-
-        """
-
-        self._tcp_client.connect(host, port)
-        self._tcp_client.write(f"GET {path} HTTP/1.1\r\n"
-                               f"Host: {host}\r\n"
-                               "Upgrade: WebSocket\r\n"
-                               "Connection: Upgrade\r\n"
-                               "Origin: MysWebSocketClient\r\n"
-                               "\r\n".to_utf8())
-        line = self._read_line()
-
-        if line != "HTTP/1.1 101":
-            raise WebsocketError("Connection failed.")
-
-        while self._read_line() != "":
-            pass
-
-    def disconnect(self):
-        """Disconnect from the server.
-
-        """
-
-        self._tcp_client.disconnect()
-
-    def _send(self, data: bytes, op_code: _OpCode):
-        header_size = 2
-        data_size = len(data)
-        self._header[0] = (INET_HTTP_WEBSOCKET_FIN | op_code)
-
-        if data_size < 126:
-            self._header[1] = (INET_HTTP_WEBSOCKET_MASK | data_size)
-        elif data_size < 65536:
-            self._header[1] = (INET_HTTP_WEBSOCKET_MASK | 126)
-            self._header[2] = ((data_size >> 8) & 0xff)
-            self._header[3] = ((data_size >> 0) & 0xff)
-            header_size += 2
-        else:
-            self._header[1] = (INET_HTTP_WEBSOCKET_MASK | 127)
-            self._header[2] = 0
-            self._header[3] = 0
-            self._header[4] = 0
-            self._header[5] = 0
-            self._header[6] = ((data_size >> 24) & 0xff)
-            self._header[7] = ((data_size >> 16) & 0xff)
-            self._header[8] = ((data_size >>  8) & 0xff)
-            self._header[9] = ((data_size >>  0) & 0xff)
-            header_size += 8
-
-        header[header_size + 0] = 0
-        header[header_size + 1] = 0
-        header[header_size + 2] = 0
-        header[header_size + 3] = 0
-        header_size += 4
-
-        self._tcp_client.write_from(self._header, 0, header_size)
-        self._tcp_client.write_from(data, 0, data_size)
-
-    def send_binary(self, data: bytes):
-        """Send given data to the server as a binary message.
-
-        This method never blocks, but instead enqueues the message if
-        the OS would block the write.
-
-        """
-
-        self._send(data, _OpCode.Binary)
-
-    def send_text(self, data: string):
-        """Send given data to the server as a text message.
-
-        This method never blocks, but instead enqueues the message if
-        the OS would block the write.
-
-        """
-
-        self._send(data.to_utf8(), _OpCode.Text)
-
-    def receive_binary(self) -> bytes:
-        """Receive a binary message from the server. This method can only be
-        used if no handler was passed to __init__(). Returns None if
-        disconnected.
-
-        """
-
-        return self._binary_queue.get()
-
-    def receive_text(self) -> string:
-        """Receive a text message from the server. This method can only be
-        used if no handler was passed to __init__(). Returns None if
-        disconnected.
-
-        """
-
-        return self._text_queue.get()
+# class Client:
+#     """A websocket client, used to communicate with a websocket server.
+#
+#     """
+#
+#     _tcp_client: TcpClient
+#     _header: bytes
+#     _reader_fiber: _ReaderFiber
+#     _binary_queue: Queue[bytes]
+#     _text_queue: Queue[string]
+#
+#     def __init__(self, handler: Handler = None):
+#         """Create a client. Give handler as None to use the default handler
+#         which puts received messages on message queues that are read
+#         from with the receive_binary() and receive_text() methods.
+#
+#         """
+#
+#         if handler is None:
+#             self._binary_queue = Queue[bytes]()
+#             self._text_queue = Queue[string]()
+#             handler = _DefaultHandler(self._binary_queue, self._text_queue)
+#         else:
+#             self._binary_queue = None
+#             self._text_queue = None
+#
+#         self._tcp_client = TcpClient()
+#         self._header = bytes(16)
+#         self._reader_fiber = _ReaderFiber(handler)
+#
+#     @raises(TcpError, WebsocketError)
+#     def connect(self, host: string, port: u32, path: string = "/"):
+#         """Connect to the server identified by given `host` and
+#         `port`. Non-secure websockets normally use port 80, while
+#         secure use port 443.
+#
+#         `path` in the path as sent in the HTTP request to the
+#         server. For example "/info/299?name=Kalle&date=2021-03-01".
+#
+#         """
+#
+#         self._tcp_client.connect(host, port)
+#         self._tcp_client.write(f"GET {path} HTTP/1.1\r\n"
+#                                f"Host: {host}\r\n"
+#                                "Upgrade: WebSocket\r\n"
+#                                "Connection: Upgrade\r\n"
+#                                "Origin: MysWebSocketClient\r\n"
+#                                "\r\n".to_utf8())
+#         line = self._read_line()
+#
+#         if line != "HTTP/1.1 101":
+#             raise WebsocketError("Connection failed.")
+#
+#         while self._read_line() != "":
+#             pass
+#
+#     def disconnect(self):
+#         """Disconnect from the server.
+#
+#         """
+#
+#         self._tcp_client.disconnect()
+#
+#     def _send(self, data: bytes, op_code: _OpCode):
+#         header_size = 2
+#         data_size = len(data)
+#         self._header[0] = (INET_HTTP_WEBSOCKET_FIN | op_code)
+#
+#         if data_size < 126:
+#             self._header[1] = (INET_HTTP_WEBSOCKET_MASK | data_size)
+#         elif data_size < 65536:
+#             self._header[1] = (INET_HTTP_WEBSOCKET_MASK | 126)
+#             self._header[2] = ((data_size >> 8) & 0xff)
+#             self._header[3] = ((data_size >> 0) & 0xff)
+#             header_size += 2
+#         else:
+#             self._header[1] = (INET_HTTP_WEBSOCKET_MASK | 127)
+#             self._header[2] = 0
+#             self._header[3] = 0
+#             self._header[4] = 0
+#             self._header[5] = 0
+#             self._header[6] = ((data_size >> 24) & 0xff)
+#             self._header[7] = ((data_size >> 16) & 0xff)
+#             self._header[8] = ((data_size >>  8) & 0xff)
+#             self._header[9] = ((data_size >>  0) & 0xff)
+#             header_size += 8
+#
+#         header[header_size + 0] = 0
+#         header[header_size + 1] = 0
+#         header[header_size + 2] = 0
+#         header[header_size + 3] = 0
+#         header_size += 4
+#
+#         self._tcp_client.write_from(self._header, 0, header_size)
+#         self._tcp_client.write_from(data, 0, data_size)
+#
+#     def send_binary(self, data: bytes):
+#         """Send given data to the server as a binary message.
+#
+#         This method never blocks, but instead enqueues the message if
+#         the OS would block the write.
+#
+#         """
+#
+#         self._send(data, _OpCode.Binary)
+#
+#     def send_text(self, data: string):
+#         """Send given data to the server as a text message.
+#
+#         This method never blocks, but instead enqueues the message if
+#         the OS would block the write.
+#
+#         """
+#
+#         self._send(data.to_utf8(), _OpCode.Text)
+#
+#     def receive_binary(self) -> bytes:
+#         """Receive a binary message from the server. This method can only be
+#         used if no handler was passed to __init__(). Returns None if
+#         disconnected.
+#
+#         """
+#
+#         return self._binary_queue.get()
+#
+#     def receive_text(self) -> string:
+#         """Receive a text message from the server. This method can only be
+#         used if no handler was passed to __init__(). Returns None if
+#         disconnected.
+#
+#         """
+#
+#         return self._text_queue.get()

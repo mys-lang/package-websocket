@@ -31,7 +31,7 @@ Server side
 
    def main():
        server = Server()
-       server.listen("localhost", 20000)
+       server.listen(20000)
 
        while True:
            client = server.accept()

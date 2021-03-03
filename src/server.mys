@@ -12,10 +12,14 @@ class Client:
 
         """
 
+        raise NotImplementedError()
+
     def send_text(self, data: string):
         """Send given data to the client as a text message.
 
         """
+
+        raise NotImplementedError()
 
     def receive_binary(self) -> bytes:
         """Receive a binary message from the client. Returns None if
@@ -23,11 +27,15 @@ class Client:
 
         """
 
+        raise NotImplementedError()
+        
     def receive_text(self) -> string:
         """Receive a text message from the client. Returns None if
         disconnected.
 
         """
+
+        raise NotImplementedError()
 
 class Server:
     """A websocket server, used to communicate with websocket clients.
@@ -39,7 +47,11 @@ class Server:
 
         """
 
+        raise NotImplementedError()
+
     def accept(self) -> Client:
         """Wait for a client to connect and accept it.
 
         """
+
+        raise NotImplementedError()
