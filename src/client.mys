@@ -1,4 +1,4 @@
-from tcp.client import Client as TcpClient
+from net.tcp.client import Client as TcpClient
 
 class WebsocketError(Error):
     pass
@@ -208,10 +208,8 @@ class Client:
         header[header_size + 3] = 0
         header_size += 4
 
-        self._write_lock.acquire()
         self._tcp_client.write_from(self._header, 0, header_size)
         self._tcp_client.write_from(data, 0, data_size)
-        self._write_lock.release()
 
     def send_binary(self, data: bytes):
         """Send given data to the server as a binary message.

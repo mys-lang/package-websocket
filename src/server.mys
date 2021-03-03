@@ -1,6 +1,6 @@
 class Client:
     """An accepted websocket client.
-    
+
     `path` is the path received in the HTTP request from the client.
 
     """
