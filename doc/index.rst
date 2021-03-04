@@ -25,6 +25,8 @@ Client side
 Server side
 -----------
 
+.. warning:: Server side websockets are not yet implemented!
+
 .. code-block:: python
 
    from websocket.server import Server
@@ -49,6 +51,8 @@ Client side
 
 Server side
 -----------
+
+.. warning:: Server side websockets are not yet implemented!
 
 .. mysfile:: src/server.mys
 

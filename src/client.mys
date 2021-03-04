@@ -16,7 +16,7 @@ HEADER_FIN: u8 = 0x80
 
 @trait
 class Handler:
-    """All methods are called from the websocket reader fiber.
+    """All methods are called from the client's reader fiber.
 
     """
 
@@ -125,13 +125,14 @@ class Client:
 
     _tcp_client: TcpClient
     _reader_fiber: _ReaderFiber
-#     _binary_queue: Queue[bytes]
-#     _text_queue: Queue[string]
-#
+    # _binary_queue: Queue[bytes]
+    # _text_queue: Queue[string]
+
     def __init__(self, handler: Handler = None):
-        """Create a client. Give handler as None to use the default handler
-        which puts received messages on message queues that are read
-        from with the receive_binary() and receive_text() methods.
+        """Create a client. Give `handler` as ``None``` to use the default
+        handler which puts received messages on message queues that
+        are read from with the `receive_binary()` and `receive_text()`
+        methods.
 
         """
 
@@ -229,7 +230,7 @@ class Client:
         self._tcp_client.write(data)
 
     def send_binary(self, data: bytes):
-        """Send given data to the server as a binary message.
+        """Send `data` to the server as a binary message.
 
         This method never blocks, but instead enqueues the message if
         the OS would block the write.
@@ -239,7 +240,7 @@ class Client:
         self._send(data, _OpCode.Binary)
 
     def send_text(self, data: string):
-        """Send given data to the server as a text message.
+        """Send `data` to the server as a text message.
 
         This method never blocks, but instead enqueues the message if
         the OS would block the write.
@@ -250,8 +251,8 @@ class Client:
 
     def receive_binary(self) -> bytes:
         """Receive a binary message from the server. This method can only be
-        used if no handler was passed to __init__(). Returns None if
-        disconnected.
+        used if no handler was passed to __init__(). Returns ``None``
+        if disconnected.
 
         """
 
@@ -261,8 +262,8 @@ class Client:
 
     def receive_text(self) -> string:
         """Receive a text message from the server. This method can only be
-        used if no handler was passed to __init__(). Returns None if
-        disconnected.
+        used if no handler was passed to __init__(). Returns ``None``
+        if disconnected.
 
         """
 
