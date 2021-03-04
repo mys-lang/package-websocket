@@ -1,3 +1,8 @@
+from fiber import Fiber
+from net.tcp.server import Server as TcpServer
+from net.tcp.server import Client as TcpClient
+from .errors import WebsocketError
+
 class Client:
     """An accepted websocket client.
 
@@ -6,6 +11,12 @@ class Client:
     """
 
     path: string
+    _tcp_client: TcpClient
+
+    def __init__(self, tcp_client: TcpClient):
+        self.path = None
+        self._tcp_client = tcp_client
+        # ToDo: Perform handshake.
 
     def send_binary(self, data: bytes):
         """Send given data to the client as a binary message.
@@ -28,7 +39,7 @@ class Client:
         """
 
         raise NotImplementedError()
-        
+
     def receive_text(self) -> string:
         """Receive a text message from the client. Returns None if
         disconnected.
@@ -42,17 +53,22 @@ class Server:
 
     """
 
+    _tcp_server: TcpServer
+
+    def __init__(self):
+        self._tcp_server = TcpServer()
+
     def listen(self, port: u32):
         """Start listening for clients to connect to given `port` on any
         interface.
 
         """
 
-        raise NotImplementedError()
+        self._tcp_server.listen(port)
 
     def accept(self) -> Client:
         """Wait for a client to connect and accept it.
 
         """
 
-        raise NotImplementedError()
+        return Client(self._tcp_server.accept())
