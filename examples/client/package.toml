@@ -6,3 +6,5 @@ authors = ["Erik Moqvist <erik.moqvist@gmail.com>"]
 [dependencies]
 net = "*"
 websocket = { path = "../.." }
+base64 = "*"
+random = "*"

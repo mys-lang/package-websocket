@@ -1,6 +1,8 @@
 from fiber import Fiber
 from net.tcp.client import Client as TcpClient
 from .errors import WebsocketError
+from base64 import encode as base64_encode
+from random.pseudo import randbytes
 
 @enum(u8)
 class _OpCode:
@@ -178,11 +180,12 @@ class Client:
         """
 
         self._tcp_client.connect(host, port)
+        sec_websocket_key = base64_encode(randbytes(16))
         self._tcp_client.write(f"GET {path} HTTP/1.1\r\n"
                                f"Host: {host}\r\n"
                                "Upgrade: WebSocket\r\n"
                                "Connection: Upgrade\r\n"
-                               "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                               f"Sec-WebSocket-Key: {sec_websocket_key}\r\n"
                                "Origin: MysWebSocketClient\r\n"
                                "Sec-WebSocket-Version: 13\r\n"
                                "\r\n".to_utf8())
