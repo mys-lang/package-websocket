@@ -18,9 +18,9 @@ Client side
    def main():
        client = Client()
        client.connect("localhost", 20000)
-       self.websocket.send_text("Hello!")
-       print(self.websocket.receive_text())
-       connect.disconnect()
+       client.send_text("Hello!")
+       print(client.receive_text())
+       client.disconnect()
 
 Server side
 -----------

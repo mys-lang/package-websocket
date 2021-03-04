@@ -42,8 +42,9 @@ class Server:
 
     """
 
-    def listen(self, host: string, port: u32):
-        """Start listening for clients on given address and port.
+    def listen(self, port: u32):
+        """Start listening for clients to connect to given `port` on any
+        interface.
 
         """
 
