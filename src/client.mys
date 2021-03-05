@@ -14,8 +14,8 @@ class _OpCode:
     Ping = 9
     Pong = 10
 
-HEADER_MASK: u8 = 0x80
-HEADER_FIN: u8 = 0x80
+_HEADER_MASK: u8 = 0x80
+_HEADER_FIN: u8 = 0x80
 
 class _ReadError(Error):
     pass
@@ -53,24 +53,24 @@ class _DefaultHandler(Handler):
 def _send_frame(tcp_client: TcpClient, data: bytes, op_code: _OpCode):
     header = b""
     data_size = len(data)
-    header += (HEADER_FIN | u8(op_code))
+    header += (_HEADER_FIN | u8(op_code))
 
     if data_size < 126:
-        header += (HEADER_MASK | u8(data_size))
+        header += (_HEADER_MASK | u8(data_size))
     elif data_size < 65536:
-        header += (HEADER_MASK | 126)
+        header += (_HEADER_MASK | 126)
         header += u8((data_size >> 8) & 0xff)
         header += u8((data_size >> 0) & 0xff)
     else:
-        header += (HEADER_MASK | 127)
+        header += (_HEADER_MASK | 127)
         header += 0
         header += 0
         header += 0
         header += 0
-        header += ((data_size >> 24) & 0xff)
-        header += ((data_size >> 16) & 0xff)
-        header += ((data_size >>  8) & 0xff)
-        header += ((data_size >>  0) & 0xff)
+        header += u8((data_size >> 24) & 0xff)
+        header += u8((data_size >> 16) & 0xff)
+        header += u8((data_size >>  8) & 0xff)
+        header += u8((data_size >>  0) & 0xff)
 
     header += 0
     header += 0
@@ -101,9 +101,9 @@ class _ReaderFiber(Fiber):
 
     def _read_frame(self) -> (_OpCode, bytes, bool):
         header = self._tcp_read(2)
-        op_code = _OpCode(header[0] & ~HEADER_MASK)
-        fin = (header[0] & HEADER_FIN) == HEADER_FIN
-        data_size = u32(header[1] & ~HEADER_MASK)
+        op_code = _OpCode(header[0] & ~_HEADER_MASK)
+        fin = (header[0] & _HEADER_FIN) == _HEADER_FIN
+        data_size = u32(header[1] & ~_HEADER_MASK)
 
         if data_size == 126:
             header = self._tcp_client.read(2)
