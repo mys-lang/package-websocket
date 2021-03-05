@@ -1,4 +1,5 @@
 from fiber import Fiber
+from fiber import Queue
 from net.tcp.client import Client as TcpClient
 from .errors import WebsocketError
 from base64 import encode as base64_encode
@@ -33,35 +34,34 @@ class Handler:
         """
 
 class _DefaultHandler(Handler):
-    # _binary_queue: Queue[bytes]
-    # _text_queue: Queue[string]
+    _binary_queue: Queue[bytes]
+    _text_queue: Queue[string]
 
-    # def __init__(self, binary_queue: Queue[bytes], text_queue: Queue[string]):
-    #     self._binary_queue = binary_queue
-    #     self._text_queue = text_queue
+    def __init__(self, binary_queue: Queue[bytes], text_queue: Queue[string]):
+        self._binary_queue = binary_queue
+        self._text_queue = text_queue
 
     def on_binary(self, data: bytes):
-        # self._binary_queue.put(data)
-        pass
+        self._binary_queue.put(data)
 
     def on_text(self, data: string):
-        # self._text_queue.put(data)
-        pass
+        self._text_queue.put(data)
 
 class _ReaderFiber(Fiber):
     _tcp_client: TcpClient
-    _header: bytes
     _handler: Handler
     _data_op_code: _OpCode
     _data: bytes
 
-    def __init__(self, handler: Handler):
+    def __init__(self, handler: Handler, tcp_client: TcpClient):
         self._handler = handler
+        self._tcp_client = tcp_client
         self._data = None
 
-    def _read_frame(self) -> (_OpCode, bytes):
+    def _read_frame(self) -> (_OpCode, bytes, bool):
         header = self._tcp_client.read(2)
-        op_code = _OpCode(header[0])
+        op_code = _OpCode(header[0] & ~HEADER_MASK)
+        fin = (header[0] & HEADER_FIN) == HEADER_FIN
         data_size = u32(header[1] & ~HEADER_MASK)
 
         if data_size == 126:
@@ -76,7 +76,7 @@ class _ReaderFiber(Fiber):
 
         data = self._tcp_client.read(data_size)
 
-        return op_code, data
+        return op_code, data, fin
 
     def _handle_close(self):
         print("Close.")
@@ -87,7 +87,7 @@ class _ReaderFiber(Fiber):
     def _handle_pong(self):
         print("Pong.")
 
-    def _handle_data(self, op_code: _OpCode, data: bytes):
+    def _handle_data(self, op_code: _OpCode, data: bytes, fin: bool):
         if self._data is None:
             self._data_op_code = op_code
             self._data = data
@@ -97,8 +97,8 @@ class _ReaderFiber(Fiber):
             self._data = None
             return
 
-        #if not frame.fin:
-        #    return
+        if not fin:
+            return
 
         match self._data_op_code:
             case _OpCode.Text:
@@ -106,9 +106,11 @@ class _ReaderFiber(Fiber):
             case _OpCode.Binary:
                 self._handler.on_binary(self._data)
 
+        self._data = None
+
     def run(self):
         while True:
-            op_code, data = self._read_frame()
+            op_code, data, fin = self._read_frame()
 
             match op_code:
                 case _OpCode.Close:
@@ -118,7 +120,7 @@ class _ReaderFiber(Fiber):
                 case _OpCode.Pong:
                     self._handle_pong()
                 case _:
-                    self._handle_data(op_code, data)
+                    self._handle_data(op_code, data, fin)
 
 class Client:
     """A websocket client, used to communicate with a websocket server.
@@ -127,8 +129,8 @@ class Client:
 
     _tcp_client: TcpClient
     _reader_fiber: _ReaderFiber
-    # _binary_queue: Queue[bytes]
-    # _text_queue: Queue[string]
+    _binary_queue: Queue[bytes]
+    _text_queue: Queue[string]
 
     def __init__(self, handler: Handler = None):
         """Create a client. Give `handler` as ``None``` to use the default
@@ -138,16 +140,20 @@ class Client:
 
         """
 
-        # if handler is None:
-        #     self._binary_queue = Queue[bytes]()
-        #     self._text_queue = Queue[string]()
-        #     handler = _DefaultHandler(self._binary_queue, self._text_queue)
-        # else:
-        #     self._binary_queue = None
-        #     self._text_queue = None
+        if handler is None:
+            # ToDo: Assign to self._binary_queue directly when Mys
+            #       supports it.
+            binary_queue = Queue[bytes]()
+            text_queue = Queue[string]()
+            handler = _DefaultHandler(binary_queue, text_queue)
+            self._binary_queue = binary_queue
+            self._text_queue = text_queue
+        else:
+            self._binary_queue = None
+            self._text_queue = None
 
         self._tcp_client = TcpClient()
-        self._reader_fiber = _ReaderFiber(handler)
+        self._reader_fiber = _ReaderFiber(handler, self._tcp_client)
 
     def _read_line(self) -> string:
         line = b""
@@ -200,7 +206,10 @@ class Client:
 
         """
 
-        self._tcp_client.disconnect()
+        # ToDo: The reader fiber is reading. Should probably cancel
+        #       the reader fiber and then perform clean disconnect.
+
+        # self._tcp_client.disconnect()
 
     def _send(self, data: bytes, op_code: _OpCode):
         header = b""
@@ -259,9 +268,7 @@ class Client:
 
         """
 
-        # return self._binary_queue.get()
-
-        raise NotImplementedError()
+        return self._binary_queue.get()
 
     def receive_text(self) -> string:
         """Receive a text message from the server. This method can only be
@@ -270,6 +277,4 @@ class Client:
 
         """
 
-        # return self._text_queue.get()
-
-        raise NotImplementedError()
+        return self._text_queue.get()

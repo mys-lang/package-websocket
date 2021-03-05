@@ -3,6 +3,6 @@ from websocket.client import Client
 def main():
     client = Client()
     client.connect("localhost", 20000)
-    client.send_text("Hello!")
+    client.send_text(f"Alan")
     print(client.receive_text())
     client.disconnect()

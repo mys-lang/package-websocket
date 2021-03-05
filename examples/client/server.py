@@ -7,13 +7,13 @@ logging.basicConfig(level=logging.DEBUG)
 async def hello(websocket, path):
     print("Connected!")
 
-    name = await websocket.recv()
-    print(f"< {name}")
+    while True:
+        name = await websocket.recv()
+        print(f"< {name}")
 
-    greeting = f"Hello {name}!"
-
-    await websocket.send(greeting)
-    print(f"> {greeting}")
+        greeting = f"Hello {name}!"
+        await websocket.send(greeting)
+        print(f"> {greeting}")
 
 
 start_server = websockets.serve(hello, "localhost", 20000)
