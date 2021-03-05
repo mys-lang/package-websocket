@@ -1,6 +1,6 @@
 from fiber import Fiber
-from net.tcp.server import Server as TcpServer
 from net.tcp.server import Client as TcpClient
+from net.tcp.server import Server as TcpServer
 from .errors import WebsocketError
 
 class Client:
@@ -16,6 +16,7 @@ class Client:
     def __init__(self, tcp_client: TcpClient):
         self.path = None
         self._tcp_client = tcp_client
+
         # ToDo: Perform handshake.
 
     def send_binary(self, data: bytes):

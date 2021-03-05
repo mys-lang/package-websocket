@@ -1,3 +1,2 @@
 class WebsocketError(Error):
     message: string
- 

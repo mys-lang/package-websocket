@@ -1,9 +1,9 @@
+from base64 import encode as base64_encode
 from fiber import Fiber
 from fiber import Queue
 from net.tcp.client import Client as TcpClient
-from .errors import WebsocketError
-from base64 import encode as base64_encode
 from random.pseudo import randbytes
+from .errors import WebsocketError
 
 @enum(u8)
 class _OpCode:
@@ -16,6 +16,9 @@ class _OpCode:
 
 HEADER_MASK: u8 = 0x80
 HEADER_FIN: u8 = 0x80
+
+class _ReadError(Error):
+    pass
 
 @trait
 class Handler:
@@ -47,6 +50,36 @@ class _DefaultHandler(Handler):
     def on_text(self, data: string):
         self._text_queue.put(data)
 
+def _send_frame(tcp_client: TcpClient, data: bytes, op_code: _OpCode):
+    header = b""
+    data_size = len(data)
+    header += (HEADER_FIN | u8(op_code))
+
+    if data_size < 126:
+        header += (HEADER_MASK | u8(data_size))
+    elif data_size < 65536:
+        header += (HEADER_MASK | 126)
+        header += u8((data_size >> 8) & 0xff)
+        header += u8((data_size >> 0) & 0xff)
+    else:
+        header += (HEADER_MASK | 127)
+        header += 0
+        header += 0
+        header += 0
+        header += 0
+        header += ((data_size >> 24) & 0xff)
+        header += ((data_size >> 16) & 0xff)
+        header += ((data_size >>  8) & 0xff)
+        header += ((data_size >>  0) & 0xff)
+
+    header += 0
+    header += 0
+    header += 0
+    header += 0
+
+    tcp_client.write(header)
+    tcp_client.write(data)
+
 class _ReaderFiber(Fiber):
     _tcp_client: TcpClient
     _handler: Handler
@@ -58,8 +91,16 @@ class _ReaderFiber(Fiber):
         self._tcp_client = tcp_client
         self._data = None
 
+    def _tcp_read(self, size: u32) -> bytes:
+        data = self._tcp_client.read(size)
+
+        if data is None:
+            raise _ReadError()
+
+        return data
+
     def _read_frame(self) -> (_OpCode, bytes, bool):
-        header = self._tcp_client.read(2)
+        header = self._tcp_read(2)
         op_code = _OpCode(header[0] & ~HEADER_MASK)
         fin = (header[0] & HEADER_FIN) == HEADER_FIN
         data_size = u32(header[1] & ~HEADER_MASK)
@@ -81,11 +122,11 @@ class _ReaderFiber(Fiber):
     def _handle_close(self):
         print("Close.")
 
-    def _handle_ping(self):
-        print("Ping.")
+    def _handle_ping(self, data: bytes):
+        _send_frame(self._tcp_client, data, _OpCode.Pong)
 
     def _handle_pong(self):
-        print("Pong.")
+        pass
 
     def _handle_data(self, op_code: _OpCode, data: bytes, fin: bool):
         if self._data is None:
@@ -108,7 +149,7 @@ class _ReaderFiber(Fiber):
 
         self._data = None
 
-    def run(self):
+    def _run(self):
         while True:
             op_code, data, fin = self._read_frame()
 
@@ -116,17 +157,25 @@ class _ReaderFiber(Fiber):
                 case _OpCode.Close:
                     self._handle_close()
                 case _OpCode.Ping:
-                    self._handle_ping()
+                    self._handle_ping(data)
                 case _OpCode.Pong:
                     self._handle_pong()
                 case _:
                     self._handle_data(op_code, data, fin)
+
+    def run(self):
+        try:
+            self._run()
+        except _ReadError:
+            self._handler.on_binary(None)
+            self._handler.on_text(None)
 
 class Client:
     """A websocket client, used to communicate with a websocket server.
 
     """
 
+    _handler: Handler
     _tcp_client: TcpClient
     _reader_fiber: _ReaderFiber
     _binary_queue: Queue[bytes]
@@ -152,8 +201,8 @@ class Client:
             self._binary_queue = None
             self._text_queue = None
 
+        self._handler = handler
         self._tcp_client = TcpClient()
-        self._reader_fiber = _ReaderFiber(handler, self._tcp_client)
 
     def _read_line(self) -> string:
         line = b""
@@ -199,6 +248,7 @@ class Client:
         while self._read_line() != "":
             pass
 
+        self._reader_fiber = _ReaderFiber(self._handler, self._tcp_client)
         self._reader_fiber.start()
 
     def disconnect(self):
@@ -209,37 +259,9 @@ class Client:
         # ToDo: The reader fiber is reading. Should probably cancel
         #       the reader fiber and then perform clean disconnect.
 
+        # self._reader_fiber.cancel()
+        # self._reader_fiber.join()
         # self._tcp_client.disconnect()
-
-    def _send(self, data: bytes, op_code: _OpCode):
-        header = b""
-        data_size = len(data)
-        header += (HEADER_FIN | u8(op_code))
-
-        if data_size < 126:
-            header += (HEADER_MASK | u8(data_size))
-        elif data_size < 65536:
-            header += (HEADER_MASK | 126)
-            header += u8((data_size >> 8) & 0xff)
-            header += u8((data_size >> 0) & 0xff)
-        else:
-            header += (HEADER_MASK | 127)
-            header += 0
-            header += 0
-            header += 0
-            header += 0
-            header += ((data_size >> 24) & 0xff)
-            header += ((data_size >> 16) & 0xff)
-            header += ((data_size >>  8) & 0xff)
-            header += ((data_size >>  0) & 0xff)
-
-        header += 0
-        header += 0
-        header += 0
-        header += 0
-
-        self._tcp_client.write(header)
-        self._tcp_client.write(data)
 
     def send_binary(self, data: bytes):
         """Send `data` to the server as a binary message.
@@ -249,7 +271,7 @@ class Client:
 
         """
 
-        self._send(data, _OpCode.Binary)
+        _send_frame(self._tcp_client, data, _OpCode.Binary)
 
     def send_text(self, data: string):
         """Send `data` to the server as a text message.
@@ -259,7 +281,7 @@ class Client:
 
         """
 
-        self._send(data.to_utf8(), _OpCode.Text)
+        _send_frame(self._tcp_client, data.to_utf8(), _OpCode.Text)
 
     def receive_binary(self) -> bytes:
         """Receive a binary message from the server. This method can only be

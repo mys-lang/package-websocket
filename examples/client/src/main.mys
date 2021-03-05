@@ -1,8 +1,18 @@
+from fiber import sleep
 from websocket.client import Client
 
 def main():
     client = Client()
     client.connect("localhost", 20000)
-    client.send_text(f"Alan")
-    print(client.receive_text())
+
+    for i in range(120):
+        client.send_text(f"Alan {i}")
+        message = client.receive_text()
+
+        if message is None:
+            break
+
+        print(message)
+        sleep(1.0)
+
     client.disconnect()
