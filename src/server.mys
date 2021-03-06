@@ -19,6 +19,8 @@ class Client:
 
         # ToDo: Perform handshake.
 
+        raise NotImplementedError()
+
     def send_binary(self, data: bytes):
         """Send given data to the client as a binary message.
 

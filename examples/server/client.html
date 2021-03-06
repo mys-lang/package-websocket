@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Websocket client</title>
+  </head>
+  <body>
+    <script>
+      var websocket = new WebSocket("ws://localhost:20000/");
+
+      websocket.onmessage = function (event) {
+          var messages = document.getElementsByTagName('ul')[0];
+          var message = document.createElement('li');
+          var content = document.createTextNode(event.data);
+          message.appendChild(content);
+          messages.appendChild(message);
+      };
+    </script>
+    Messages received from the websocket server:
+    <ul></ul>
+  </body>
+</html>
