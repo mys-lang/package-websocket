@@ -8,14 +8,12 @@
       var websocket = new WebSocket("ws://localhost:20000/");
 
       websocket.onmessage = function (event) {
-          var messages = document.getElementsByTagName('ul')[0];
           var message = document.createElement('li');
-          var content = document.createTextNode(event.data);
-          message.appendChild(content);
-          messages.appendChild(message);
+          message.appendChild(document.createTextNode(event.data));
+          document.getElementById('messages').appendChild(message);
       };
     </script>
     Messages received from the websocket server:
-    <ul></ul>
+    <ul id="messages"></ul>
   </body>
 </html>
