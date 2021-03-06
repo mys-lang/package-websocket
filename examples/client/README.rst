@@ -12,3 +12,9 @@ Client example
    .. code-block::
 
       $ mys run
+      ...
+      Hello Alan 0!
+      Hello Alan 1!
+      Hello Alan 2!
+      Hello Alan 3!
+      ...
