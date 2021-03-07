@@ -10,11 +10,12 @@ def main():
         client = server.accept()
         print("Client connected.")
 
-        for i in range(20):
+        for i in range(10):
+            client.send_text(f"Message {i}")
+
             if not client.is_connected():
                 break
 
-            client.send_text(f"Message {i}")
             sleep(1.0)
 
         client.send_text("Done!")

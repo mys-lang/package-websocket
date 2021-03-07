@@ -1,6 +1,6 @@
 from base64 import encode as base64_encode
 from fiber import Fiber
-from net.tcp.client import Client as TcpClient
+from net.tcp.server import Client as TcpClient
 from net.tcp.server import Server as TcpServer
 from .errors import WebsocketError
 from .common import OpCode
@@ -97,7 +97,7 @@ class Client:
         return string(line)[:-2]
 
     def is_connected(self) -> bool:
-        return self._connected
+        return self._connected and self._tcp_client.is_connected()
 
     def send_binary(self, data: bytes):
         """Send given data to the client as a binary message.
