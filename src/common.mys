@@ -1,0 +1,11 @@
+@enum(u8)
+class OpCode:
+    Continuation = 0
+    Text = 1
+    Binary = 2
+    Close = 8
+    Ping = 9
+    Pong = 10
+
+HEADER_MASK: u8 = 0x80
+HEADER_FIN: u8 = 0x80

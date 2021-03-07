@@ -1,5 +1,4 @@
 from fiber import sleep
-from random.pseudo import random
 from websocket.server import Server
 
 def main():
@@ -7,8 +6,15 @@ def main():
     server.listen(20000)
 
     while True:
+        print("Waiting for a client to connect.")
         client = server.accept()
+        print("Client connected.")
 
-        for i in range(30):
+        for i in range(20):
+            if not client.is_connected():
+                break
+
             client.send_text(f"Message {i}")
-            sleep(random() * 3.0)
+            sleep(1.0)
+
+        client.send_text("Done!")

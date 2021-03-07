@@ -1,7 +1,36 @@
+from base64 import encode as base64_encode
 from fiber import Fiber
 from net.tcp.server import Client as TcpClient
 from net.tcp.server import Server as TcpServer
 from .errors import WebsocketError
+from .common import OpCode
+from .common import HEADER_FIN
+from hash.sha1 import sha1
+
+def _send_frame(tcp_client: TcpClient, data: bytes, op_code: OpCode):
+    header = b""
+    data_size = len(data)
+    header += (HEADER_FIN | u8(op_code))
+
+    if data_size < 126:
+        header += u8(data_size)
+    elif data_size < 65536:
+        header += 126
+        header += u8((data_size >> 8) & 0xff)
+        header += u8((data_size >> 0) & 0xff)
+    else:
+        header += 127
+        header += 0
+        header += 0
+        header += 0
+        header += 0
+        header += u8((data_size >> 24) & 0xff)
+        header += u8((data_size >> 16) & 0xff)
+        header += u8((data_size >>  8) & 0xff)
+        header += u8((data_size >>  0) & 0xff)
+
+    tcp_client.write(header)
+    tcp_client.write(data)
 
 class Client:
     """An accepted websocket client.
@@ -12,14 +41,63 @@ class Client:
 
     path: string
     _tcp_client: TcpClient
+    _connected: bool
 
     def __init__(self, tcp_client: TcpClient):
         self.path = None
         self._tcp_client = tcp_client
+        self._connected = True
+        sec_websocket_key: string = None
 
-        # ToDo: Perform handshake.
+        while True:
+            line = self._read_line()
 
-        raise NotImplementedError()
+            if line == "":
+                break
+
+            mo = line.match(re"^GET (.*) HTTP/1.1$")
+
+            if mo is not None:
+                self.path = mo.group(1)
+                continue
+
+            if line.starts_with("Sec-WebSocket-Key: "):
+                sec_websocket_key = line[19:]
+                continue
+
+        if self.path is None or sec_websocket_key is None:
+            raise WebsocketError("Invalid HTTP request.")
+
+        sec_websocket_key += "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+        sec_websocket_accept = base64_encode(sha1(sec_websocket_key.to_utf8()))
+
+        tcp_client.write("HTTP/1.1 101 Switching Protocols\r\n"
+                         "Upgrade: websocket\r\n"
+                         "Connection: Upgrade\r\n"
+                         f"Sec-WebSocket-Accept: {sec_websocket_accept}\r\n"
+                         "\r\n".to_utf8())
+
+    def _read_line(self) -> string:
+        line = b""
+
+        while True:
+            byte = self._tcp_client.read(1)
+
+            if byte is None:
+                raise WebsocketError("Handshake failed.")
+
+            line += byte
+
+            if len(line) < 2:
+                continue
+
+            if line[-2] == u8('\r') and line[-1] == u8('\n'):
+                break
+
+        return string(line)[:-2]
+
+    def is_connected(self) -> bool:
+        return self._connected
 
     def send_binary(self, data: bytes):
         """Send given data to the client as a binary message.
@@ -33,7 +111,7 @@ class Client:
 
         """
 
-        raise NotImplementedError()
+        _send_frame(self._tcp_client, data.to_utf8(), OpCode.Text)
 
     def receive_binary(self) -> bytes:
         """Receive a binary message from the client. Returns None if

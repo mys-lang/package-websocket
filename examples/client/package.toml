@@ -8,3 +8,4 @@ net = "*"
 websocket = { path = "../.." }
 base64 = "*"
 random = "*"
+hash = "*"
