@@ -1,6 +1,6 @@
 from base64 import encode as base64_encode
 from fiber import Fiber
-from net.tcp.server import Client as TcpClient
+from net.tcp.client import Client as TcpClient
 from net.tcp.server import Server as TcpServer
 from .errors import WebsocketError
 from .common import OpCode
