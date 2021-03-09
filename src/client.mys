@@ -1,15 +1,43 @@
 from base64 import encode as base64_encode
 from fiber import Fiber
 from fiber import Queue
+from net.stcp.client import Client as StcpClient
 from net.tcp.client import Client as TcpClient
 from random.pseudo import randbytes
-from .errors import WebsocketError
-from .common import OpCode
-from .common import HEADER_MASK
 from .common import HEADER_FIN
+from .common import HEADER_MASK
+from .common import OpCode
+from .errors import WebsocketError
 
 class _ReadError(Error):
     pass
+
+@trait
+class _Io:
+
+    def write(self, data: bytes):
+        pass
+
+    def read(self, size: u32) -> bytes:
+        pass
+
+class _TcpIo(_Io):
+    client: TcpClient
+
+    def write(self, data: bytes):
+        self.client.write(data)
+
+    def read(self, size: u32) -> bytes:
+        return self.client.read(size)
+
+class _StcpIo(_Io):
+    client: StcpClient
+
+    def write(self, data: bytes):
+        self.client.write(data)
+
+    def read(self, size: u32) -> bytes:
+        return self.client.read(size)
 
 @trait
 class Handler:
@@ -41,7 +69,7 @@ class _DefaultHandler(Handler):
     def on_text(self, data: string):
         self._text_queue.put(data)
 
-def _send_frame(tcp_client: TcpClient, data: bytes, op_code: OpCode):
+def _send_frame(io: _Io, data: bytes, op_code: OpCode):
     header = b""
     data_size = len(data)
     header += (HEADER_FIN | u8(op_code))
@@ -68,22 +96,22 @@ def _send_frame(tcp_client: TcpClient, data: bytes, op_code: OpCode):
     header += 0
     header += 0
 
-    tcp_client.write(header)
-    tcp_client.write(data)
+    io.write(header)
+    io.write(data)
 
 class _ReaderFiber(Fiber):
-    _tcp_client: TcpClient
+    _io: _Io
     _handler: Handler
     _data_op_code: OpCode
     _data: bytes
 
-    def __init__(self, handler: Handler, tcp_client: TcpClient):
+    def __init__(self, handler: Handler, io: _Io):
         self._handler = handler
-        self._tcp_client = tcp_client
+        self._io = io
         self._data = None
 
     def _tcp_read(self, size: u32) -> bytes:
-        data = self._tcp_client.read(size)
+        data = self._io.read(size)
 
         if data is None:
             raise _ReadError()
@@ -118,7 +146,7 @@ class _ReaderFiber(Fiber):
         print("Close.")
 
     def _handle_ping(self, data: bytes):
-        _send_frame(self._tcp_client, data, OpCode.Pong)
+        _send_frame(self._io, data, OpCode.Pong)
 
     def _handle_pong(self):
         pass
@@ -175,8 +203,11 @@ class Client:
     _reader_fiber: _ReaderFiber
     _binary_queue: Queue[bytes]
     _text_queue: Queue[string]
+    _stcp_client: StcpClient
+    _secure: bool
+    _io: _Io
 
-    def __init__(self, handler: Handler = None):
+    def __init__(self, handler: Handler = None, secure: bool = False):
         """Create a client. Give `handler` as ``None``` to use the default
         handler which puts received messages on message queues that
         are read from with the `receive_binary()` and `receive_text()`
@@ -197,13 +228,20 @@ class Client:
             self._text_queue = None
 
         self._handler = handler
-        self._tcp_client = TcpClient()
+        self._secure = secure
+
+        if secure:
+            self._stcp_client = StcpClient()
+            self._io = _StcpIo(self._stcp_client)
+        else:
+            self._tcp_client = TcpClient()
+            self._io = _TcpIo(self._tcp_client)
 
     def _read_line(self) -> string:
         line = b""
 
         while True:
-            byte = self._tcp_client.read(1)
+            byte = self._io.read(1)
 
             if byte is None:
                 raise WebsocketError("Handshake failed.")
@@ -229,16 +267,20 @@ class Client:
 
         """
 
-        self._tcp_client.connect(host, port)
+        if self._secure:
+            self._stcp_client.connect(host, port)
+        else:
+            self._tcp_client.connect(host, port)
+
         sec_websocket_key = base64_encode(randbytes(16))
-        self._tcp_client.write(f"GET {path} HTTP/1.1\r\n"
-                               f"Host: {host}\r\n"
-                               "Upgrade: WebSocket\r\n"
-                               "Connection: Upgrade\r\n"
-                               f"Sec-WebSocket-Key: {sec_websocket_key}\r\n"
-                               "Origin: MysWebSocketClient\r\n"
-                               "Sec-WebSocket-Version: 13\r\n"
-                               "\r\n".to_utf8())
+        self._io.write(f"GET {path} HTTP/1.1\r\n"
+                       f"Host: {host}\r\n"
+                       "Upgrade: WebSocket\r\n"
+                       "Connection: Upgrade\r\n"
+                       f"Sec-WebSocket-Key: {sec_websocket_key}\r\n"
+                       "Origin: MysWebSocketClient\r\n"
+                       "Sec-WebSocket-Version: 13\r\n"
+                       "\r\n".to_utf8())
 
         while True:
             line = self._read_line()
@@ -246,7 +288,7 @@ class Client:
             if line == "":
                 break
 
-        self._reader_fiber = _ReaderFiber(self._handler, self._tcp_client)
+        self._reader_fiber = _ReaderFiber(self._handler, self._io)
         self._reader_fiber.start()
 
     def disconnect(self):
@@ -269,7 +311,7 @@ class Client:
 
         """
 
-        _send_frame(self._tcp_client, data, OpCode.Binary)
+        _send_frame(self._io, data, OpCode.Binary)
 
     def send_text(self, data: string):
         """Send `data` to the server as a text message.
@@ -279,7 +321,7 @@ class Client:
 
         """
 
-        _send_frame(self._tcp_client, data.to_utf8(), OpCode.Text)
+        _send_frame(self._io, data.to_utf8(), OpCode.Text)
 
     def receive_binary(self) -> bytes:
         """Receive a binary message from the server. This method can only be

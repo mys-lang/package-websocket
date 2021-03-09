@@ -1,11 +1,11 @@
 from base64 import encode as base64_encode
 from fiber import Fiber
+from hash.sha1 import sha1
 from net.tcp.server import Client as TcpClient
 from net.tcp.server import Server as TcpServer
-from .errors import WebsocketError
-from .common import OpCode
 from .common import HEADER_FIN
-from hash.sha1 import sha1
+from .common import OpCode
+from .errors import WebsocketError
 
 def _send_frame(tcp_client: TcpClient, data: bytes, op_code: OpCode):
     header = b""
