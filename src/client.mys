@@ -113,7 +113,7 @@ class _ReaderFiber(Fiber):
     def _tcp_read(self, size: u32) -> bytes:
         data = self._io.read(size)
 
-        if data is None:
+        if u32(len(data)) != size:
             raise _ReadError()
 
         return data
@@ -243,7 +243,7 @@ class Client:
         while True:
             byte = self._io.read(1)
 
-            if byte is None:
+            if len(byte) != 1:
                 raise WebsocketError("Handshake failed.")
 
             line += byte
