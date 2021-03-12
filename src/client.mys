@@ -1,6 +1,7 @@
 from base64 import encode as base64_encode
 from fiber import Fiber
 from fiber import Queue
+from fiber import CancelledError
 from net.stcp.client import Client as StcpClient
 from net.tcp.client import Client as TcpClient
 from random.pseudo import randbytes
@@ -114,6 +115,7 @@ class _ReaderFiber(Fiber):
         data = self._io.read(size)
 
         if u32(len(data)) != size:
+            print("Read error!")
             raise _ReadError()
 
         return data
@@ -190,9 +192,14 @@ class _ReaderFiber(Fiber):
         try:
             self._run()
         except _ReadError:
+            print("Websocket reader fiber closed.")
             self._handler.on_binary(None)
             self._handler.on_text(None)
+        except CancelledError:
+            print("Websocket reader fiber cancelled.")
 
+        print("websocket reader stopping")
+            
 class Client:
     """A websocket client, used to communicate with a websocket server.
 
@@ -296,12 +303,19 @@ class Client:
 
         """
 
-        # ToDo: The reader fiber is reading. Should probably cancel
-        #       the reader fiber and then perform clean disconnect.
+        self._reader_fiber.cancel()
+        print("websocket reader cancelled")
+        self._reader_fiber.join()
+        print("websocket reader joined")
 
-        # self._reader_fiber.cancel()
-        # self._reader_fiber.join()
-        # self._tcp_client.disconnect()
+        if self._secure:
+            print("stcp disconnect")
+            self._stcp_client.disconnect()
+            print("stcp disconnected")
+        else:
+            print("tcp disconnect")
+            self._tcp_client.disconnect()
+            print("tcp disconnected")
 
     def send_binary(self, data: bytes):
         """Send `data` to the server as a binary message.
