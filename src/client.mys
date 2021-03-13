@@ -8,7 +8,7 @@ from random.pseudo import randbytes
 from .common import HEADER_FIN
 from .common import HEADER_MASK
 from .common import OpCode
-from .errors import WebsocketError
+from . import WebsocketError
 
 class _ReadError(Error):
     pass
@@ -115,7 +115,6 @@ class _ReaderFiber(Fiber):
         data = self._io.read(size)
 
         if u32(len(data)) != size:
-            print("Read error!")
             raise _ReadError()
 
         return data
@@ -192,13 +191,10 @@ class _ReaderFiber(Fiber):
         try:
             self._run()
         except _ReadError:
-            print("Websocket reader fiber closed.")
             self._handler.on_binary(None)
             self._handler.on_text(None)
         except CancelledError:
-            print("Websocket reader fiber cancelled.")
-
-        print("websocket reader stopping")
+            pass
             
 class Client:
     """A websocket client, used to communicate with a websocket server.
@@ -263,7 +259,7 @@ class Client:
 
         return string(line)[:-2]
 
-    @raises(TcpError, WebsocketError)
+    @raises(NetError, WebsocketError)
     def connect(self, host: string, port: u32, path: string = "/"):
         """Connect to the server identified by given `host` and
         `port`. Non-secure websockets normally use port 80, while
@@ -304,18 +300,12 @@ class Client:
         """
 
         self._reader_fiber.cancel()
-        print("websocket reader cancelled")
         self._reader_fiber.join()
-        print("websocket reader joined")
 
         if self._secure:
-            print("stcp disconnect")
             self._stcp_client.disconnect()
-            print("stcp disconnected")
         else:
-            print("tcp disconnect")
             self._tcp_client.disconnect()
-            print("tcp disconnected")
 
     def send_binary(self, data: bytes):
         """Send `data` to the server as a binary message.

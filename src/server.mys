@@ -5,7 +5,7 @@ from net.tcp.server import Client as TcpClient
 from net.tcp.server import Server as TcpServer
 from .common import HEADER_FIN
 from .common import OpCode
-from .errors import WebsocketError
+from . import WebsocketError
 
 def _send_frame(tcp_client: TcpClient, data: bytes, op_code: OpCode):
     header = b""
