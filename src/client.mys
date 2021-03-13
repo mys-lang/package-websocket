@@ -1,14 +1,14 @@
 from base64 import encode as base64_encode
+from fiber import CancelledError
 from fiber import Fiber
 from fiber import Queue
-from fiber import CancelledError
 from net.stcp.client import Client as StcpClient
 from net.tcp.client import Client as TcpClient
 from random.pseudo import randbytes
+from . import WebsocketError
 from .common import HEADER_FIN
 from .common import HEADER_MASK
 from .common import OpCode
-from . import WebsocketError
 
 class _ReadError(Error):
     pass
@@ -195,7 +195,7 @@ class _ReaderFiber(Fiber):
             self._handler.on_text(None)
         except CancelledError:
             pass
-            
+
 class Client:
     """A websocket client, used to communicate with a websocket server.
 
