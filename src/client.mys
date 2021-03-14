@@ -9,6 +9,7 @@ from . import WebsocketError
 from .common import HEADER_FIN
 from .common import HEADER_MASK
 from .common import OpCode
+from .server import Server
 
 class _ReadError(Error):
     pass
@@ -344,3 +345,27 @@ class Client:
         """
 
         return self._text_queue.get()
+
+class _ConnectionFiber(Fiber):
+    server: Server
+
+    def run(self):
+        client = self.server.accept()
+        assert client.is_connected()
+        client.send_text("Hi!")
+
+@test
+def test_connection():
+    port: u32 = 60101
+
+    server = Server()
+    server.listen(port)
+    server_fiber = _ConnectionFiber(server)
+    server_fiber.start()
+
+    client = Client()
+    client.connect("localhost", port)
+    assert client.receive_text() == "Hi!"
+    client.disconnect()
+
+    server_fiber.join()
