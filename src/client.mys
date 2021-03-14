@@ -11,7 +11,7 @@ from .common import HEADER_MASK
 from .common import OpCode
 from .server import Server
 
-class _ReadError(Error):
+class _ClosedError(Error):
     pass
 
 @trait
@@ -116,7 +116,7 @@ class _ReaderFiber(Fiber):
         data = self._io.read(size)
 
         if u32(len(data)) != size:
-            raise _ReadError()
+            raise _ClosedError()
 
         return data
 
@@ -191,7 +191,7 @@ class _ReaderFiber(Fiber):
     def run(self):
         try:
             self._run()
-        except _ReadError:
+        except _ClosedError:
             self._handler.on_binary(None)
             self._handler.on_text(None)
         except CancelledError:
