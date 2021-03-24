@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = ["Erik Moqvist <erik.moqvist@gmail.com>"]
 
 [dependencies]
-net = "*"
+net = "latest"
 websocket = { path = "../.." }
-base64 = "*"
-random = "*"
-hash = "*"
+base64 = "latest"
+random = "latest"
+hash = "latest"

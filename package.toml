@@ -1,11 +1,11 @@
 [package]
 name = "websocket"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Erik Moqvist <erik.moqvist@gmail.com>"]
 description = "Websocket."
 
 [dependencies]
-net = "*"
-base64 = "*"
-random = "*"
-hash = "*"
+net = "latest"
+base64 = "latest"
+random = "latest"
+hash = "latest"
