@@ -9,3 +9,4 @@ websocket = { path = "../.." }
 base64 = "latest"
 random = "latest"
 hash = "latest"
+io = "latest"
