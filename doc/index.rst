@@ -43,8 +43,8 @@ Server side
            print(f"Got: {message}")
            client.send_text(f"Message: '{message}'")
 
-Functions and types
-===================
+API
+===
 
 Client side
 -----------
