@@ -1,4 +1,6 @@
+|discord|_
 |test|_
+|stars|_
 
 About
 =====
@@ -58,7 +60,13 @@ Server side
 
 .. mysfile:: src/server.mys
 
+.. |discord| image:: https://img.shields.io/discord/777073391320170507?label=Discord&logo=discord&logoColor=white
+.. _discord: https://discord.gg/GFDN7JvWKS
+
 .. |test| image:: https://github.com/mys-lang/package-websocket/actions/workflows/pythonpackage.yml/badge.svg
 .. _test: https://github.com/mys-lang/package-websocket/actions/workflows/pythonpackage.yml
+
+.. |stars| image:: https://img.shields.io/github/stars/mys-lang/package-websocket?style=social
+.. _stars: https://github.com/mys-lang/package-websocket
 
 .. _Mys programming language: https://mys-lang.org
