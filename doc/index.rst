@@ -15,7 +15,7 @@ Examples
 Client side
 -----------
 
-.. code-block:: python
+.. code-block:: mys
 
    from websocket.client import Client
 
@@ -31,7 +31,7 @@ Server side
 
 .. warning:: Server side websockets are not yet implemented!
 
-.. code-block:: python
+.. code-block:: mys
 
    from websocket.server import Server
 
