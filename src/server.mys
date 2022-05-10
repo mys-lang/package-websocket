@@ -7,7 +7,7 @@ from . import WebsocketError
 from .common import HEADER_FIN
 from .common import OpCode
 
-def _send_frame(tcp_client: TcpClient, data: bytes, op_code: OpCode):
+func _send_frame(tcp_client: TcpClient, data: bytes, op_code: OpCode):
     header = b""
     data_size = len(data)
     header += (HEADER_FIN | u8(op_code))
@@ -43,7 +43,7 @@ class Client:
     _tcp_client: TcpClient
     _connected: bool
 
-    def __init__(self, tcp_client: TcpClient):
+    func __init__(self, tcp_client: TcpClient):
         self.path = None
         self._tcp_client = tcp_client
         self._connected = True
@@ -77,7 +77,7 @@ class Client:
                          f"Sec-WebSocket-Accept: {sec_websocket_accept}\r\n"
                          "\r\n".to_utf8())
 
-    def _read_line(self) -> string:
+    func _read_line(self) -> string:
         line = b""
 
         while True:
@@ -96,24 +96,24 @@ class Client:
 
         return string(line)[:-2]
 
-    def is_connected(self) -> bool:
+    func is_connected(self) -> bool:
         return self._connected and self._tcp_client.is_connected()
 
-    def send_binary(self, data: bytes):
+    func send_binary(self, data: bytes):
         """Send given data to the client as a binary message.
 
         """
 
         raise NotImplementedError()
 
-    def send_text(self, data: string):
+    func send_text(self, data: string):
         """Send given data to the client as a text message.
 
         """
 
         _send_frame(self._tcp_client, data.to_utf8(), OpCode.Text)
 
-    def receive_binary(self) -> bytes:
+    func receive_binary(self) -> bytes:
         """Receive a binary message from the client. Returns None if
         disconnected.
 
@@ -121,7 +121,7 @@ class Client:
 
         raise NotImplementedError()
 
-    def receive_text(self) -> string:
+    func receive_text(self) -> string:
         """Receive a text message from the client. Returns None if
         disconnected.
 
@@ -136,10 +136,10 @@ class Server:
 
     _tcp_server: TcpServer
 
-    def __init__(self):
+    func __init__(self):
         self._tcp_server = TcpServer()
 
-    def listen(self, port: u32):
+    func listen(self, port: u32):
         """Start listening for clients to connect to given `port` on any
         interface.
 
@@ -147,7 +147,7 @@ class Server:
 
         self._tcp_server.listen(port)
 
-    def accept(self) -> Client:
+    func accept(self) -> Client:
         """Wait for a client to connect and accept it.
 
         """

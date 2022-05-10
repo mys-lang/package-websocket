@@ -1,7 +1,7 @@
 from fiber import sleep
 from websocket.client import Client
 
-def main():
+func main():
     client = Client()
     client.connect("localhost", 20000)
 

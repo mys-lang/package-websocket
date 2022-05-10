@@ -17,28 +17,28 @@ class _ClosedError(Error):
 @trait
 class _Io:
 
-    def write(self, data: bytes):
+    func write(self, data: bytes):
         pass
 
-    def read(self, size: u64) -> bytes:
+    func read(self, size: u64) -> bytes:
         pass
 
 class _TcpIo(_Io):
     client: TcpClient
 
-    def write(self, data: bytes):
+    func write(self, data: bytes):
         self.client.write(data)
 
-    def read(self, size: u64) -> bytes:
+    func read(self, size: u64) -> bytes:
         return self.client.read(size)
 
 class _StcpIo(_Io):
     client: StcpClient
 
-    def write(self, data: bytes):
+    func write(self, data: bytes):
         self.client.write(data)
 
-    def read(self, size: u64) -> bytes:
+    func read(self, size: u64) -> bytes:
         return self.client.read(size)
 
 @trait
@@ -47,12 +47,12 @@ class Handler:
 
     """
 
-    def on_binary(self, data: bytes):
+    func on_binary(self, data: bytes):
         """Called when a binary message has been received from the server.
 
         """
 
-    def on_text(self, data: string):
+    func on_text(self, data: string):
         """Called when a text message has been received from the server.
 
         """
@@ -61,17 +61,17 @@ class _DefaultHandler(Handler):
     _binary_queue: Queue[bytes]
     _text_queue: Queue[string]
 
-    def __init__(self, binary_queue: Queue[bytes], text_queue: Queue[string]):
+    func __init__(self, binary_queue: Queue[bytes], text_queue: Queue[string]):
         self._binary_queue = binary_queue
         self._text_queue = text_queue
 
-    def on_binary(self, data: bytes):
+    func on_binary(self, data: bytes):
         self._binary_queue.put(data)
 
-    def on_text(self, data: string):
+    func on_text(self, data: string):
         self._text_queue.put(data)
 
-def _send_frame(io: _Io, data: bytes, op_code: OpCode):
+func _send_frame(io: _Io, data: bytes, op_code: OpCode):
     header = b""
     data_size = len(data)
     header += (HEADER_FIN | u8(op_code))
@@ -107,12 +107,12 @@ class _ReaderFiber(Fiber):
     _data_op_code: OpCode
     _data: bytes
 
-    def __init__(self, handler: Handler, io: _Io):
+    func __init__(self, handler: Handler, io: _Io):
         self._handler = handler
         self._io = io
         self._data = None
 
-    def _tcp_read(self, size: u64) -> bytes:
+    func _tcp_read(self, size: u64) -> bytes:
         data = self._io.read(size)
 
         if len(data) != size:
@@ -120,7 +120,7 @@ class _ReaderFiber(Fiber):
 
         return data
 
-    def _read_frame(self) -> (OpCode, bytes, bool):
+    func _read_frame(self) -> (OpCode, bytes, bool):
         header = self._tcp_read(2)
         op_code = OpCode(header[0] & ~HEADER_MASK)
         fin = (header[0] & HEADER_FIN) == HEADER_FIN
@@ -144,16 +144,16 @@ class _ReaderFiber(Fiber):
 
         return op_code, data, fin
 
-    def _handle_close(self):
+    func _handle_close(self):
         print("Close.")
 
-    def _handle_ping(self, data: bytes):
+    func _handle_ping(self, data: bytes):
         _send_frame(self._io, data, OpCode.Pong)
 
-    def _handle_pong(self):
+    func _handle_pong(self):
         pass
 
-    def _handle_data(self, op_code: OpCode, data: bytes, fin: bool):
+    func _handle_data(self, op_code: OpCode, data: bytes, fin: bool):
         if self._data is None:
             self._data_op_code = op_code
             self._data = data
@@ -174,7 +174,7 @@ class _ReaderFiber(Fiber):
 
         self._data = None
 
-    def _run(self):
+    func _run(self):
         while True:
             op_code, data, fin = self._read_frame()
 
@@ -188,7 +188,7 @@ class _ReaderFiber(Fiber):
                 case _:
                     self._handle_data(op_code, data, fin)
 
-    def run(self):
+    func run(self):
         try:
             self._run()
         except _ClosedError:
@@ -211,7 +211,7 @@ class Client:
     _secure: bool
     _io: _Io
 
-    def __init__(self, handler: Handler = None, secure: bool = False):
+    func __init__(self, handler: Handler = None, secure: bool = False):
         """Create a client. Give `handler` as ``None``` to use the default
         handler which puts received messages on message queues that
         are read from with the `receive_binary()` and `receive_text()`
@@ -241,7 +241,7 @@ class Client:
             self._tcp_client = TcpClient()
             self._io = _TcpIo(self._tcp_client)
 
-    def _read_line(self) -> string:
+    func _read_line(self) -> string:
         line = b""
 
         while True:
@@ -261,7 +261,7 @@ class Client:
         return string(line)[:-2]
 
     @raises(NetError, WebsocketError)
-    def connect(self, host: string, port: u32, path: string = "/"):
+    func connect(self, host: string, port: u32, path: string = "/"):
         """Connect to the server identified by given `host` and
         `port`. Non-secure websockets normally use port 80, while
         secure use port 443.
@@ -295,7 +295,7 @@ class Client:
         self._reader_fiber = _ReaderFiber(self._handler, self._io)
         self._reader_fiber.start()
 
-    def disconnect(self):
+    func disconnect(self):
         """Disconnect from the server.
 
         """
@@ -308,7 +308,7 @@ class Client:
         else:
             self._tcp_client.disconnect()
 
-    def send_binary(self, data: bytes):
+    func send_binary(self, data: bytes):
         """Send `data` to the server as a binary message.
 
         This method never blocks, but instead enqueues the message if
@@ -318,7 +318,7 @@ class Client:
 
         _send_frame(self._io, data, OpCode.Binary)
 
-    def send_text(self, data: string):
+    func send_text(self, data: string):
         """Send `data` to the server as a text message.
 
         This method never blocks, but instead enqueues the message if
@@ -328,7 +328,7 @@ class Client:
 
         _send_frame(self._io, data.to_utf8(), OpCode.Text)
 
-    def receive_binary(self) -> bytes:
+    func receive_binary(self) -> bytes:
         """Receive a binary message from the server. This method can only be
         used if no handler was passed to __init__(). Returns ``None``
         if disconnected.
@@ -337,7 +337,7 @@ class Client:
 
         return self._binary_queue.get()
 
-    def receive_text(self) -> string:
+    func receive_text(self) -> string:
         """Receive a text message from the server. This method can only be
         used if no handler was passed to __init__(). Returns ``None``
         if disconnected.
@@ -349,13 +349,13 @@ class Client:
 class _ConnectionFiber(Fiber):
     server: Server
 
-    def run(self):
+    func run(self):
         client = self.server.accept()
         assert client.is_connected()
         client.send_text("Hi!")
 
 @test
-def test_connection():
+func test_connection():
     port: u32 = 60101
 
     server = Server()

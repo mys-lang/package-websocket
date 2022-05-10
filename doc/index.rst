@@ -19,7 +19,7 @@ Client side
 
    from websocket.client import Client
 
-   def main():
+   func main():
        client = Client()
        client.connect("localhost", 20000)
        client.send_text("Hello!")
@@ -35,7 +35,7 @@ Server side
 
    from websocket.server import Server
 
-   def main():
+   func main():
        server = Server()
        server.listen(20000)
 

@@ -1,7 +1,7 @@
 from fiber import sleep
 from websocket.server import Server
 
-def main():
+func main():
     server = Server()
     server.listen(20000)
 
