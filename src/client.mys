@@ -14,8 +14,7 @@ from .server import Server
 class _ClosedError(Error):
     pass
 
-@trait
-class _Io:
+trait _Io:
 
     func write(self, data: bytes):
         pass
@@ -41,8 +40,7 @@ class _StcpIo(_Io):
     func read(self, size: u64) -> bytes:
         return self.client.read(size)
 
-@trait
-class Handler:
+trait Handler:
     """All methods are called from the client's reader fiber.
 
     """
