@@ -352,8 +352,7 @@ class _ConnectionFiber(Fiber):
         assert client.is_connected()
         client.send_text("Hi!")
 
-@test
-func test_connection():
+test connection():
     port: u32 = 60101
 
     server = Server()
