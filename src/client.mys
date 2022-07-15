@@ -19,7 +19,7 @@ trait _Io:
     func write(self, data: bytes):
         pass
 
-    func read(self, size: u64) -> bytes:
+    func read(self, size: i64) -> bytes:
         pass
 
 class _TcpIo(_Io):
@@ -28,7 +28,7 @@ class _TcpIo(_Io):
     func write(self, data: bytes):
         self.client.write(data)
 
-    func read(self, size: u64) -> bytes:
+    func read(self, size: i64) -> bytes:
         return self.client.read(size)
 
 class _StcpIo(_Io):
@@ -37,7 +37,7 @@ class _StcpIo(_Io):
     func write(self, data: bytes):
         self.client.write(data)
 
-    func read(self, size: u64) -> bytes:
+    func read(self, size: i64) -> bytes:
         return self.client.read(size)
 
 trait Handler:
@@ -71,7 +71,7 @@ class _DefaultHandler(Handler):
 
 func _send_frame(io: _Io, data: bytes, op_code: OpCode):
     header = b""
-    data_size = len(data)
+    data_size = data.length()
     header += (HEADER_FIN | u8(op_code))
 
     if data_size < 126:
@@ -110,10 +110,10 @@ class _ReaderFiber(Fiber):
         self._io = io
         self._data = None
 
-    func _tcp_read(self, size: u64) -> bytes:
+    func _tcp_read(self, size: i64) -> bytes:
         data = self._io.read(size)
 
-        if len(data) != size:
+        if data.length() != size:
             raise _ClosedError()
 
         return data
@@ -123,17 +123,17 @@ class _ReaderFiber(Fiber):
         op_code = OpCode(header[0] & ~HEADER_MASK)
         fin = (header[0] & HEADER_FIN) == HEADER_FIN
         masked = (header[1] & HEADER_MASK) == HEADER_MASK
-        data_size = u64(header[1] & ~HEADER_MASK)
+        data_size = i64(header[1] & ~HEADER_MASK)
 
         if data_size == 126:
             header = self._tcp_read(2)
-            data_size = (u64(header[0]) << 8 | u64(header[1]))
+            data_size = (i64(header[0]) << 8 | i64(header[1]))
         elif data_size == 127:
             header = self._tcp_read(8)
-            data_size = ((u64(header[4]) << 24)
-                         | (u64(header[5]) << 16)
-                         | (u64(header[6]) << 8)
-                         | u64(header[7]))
+            data_size = ((i64(header[4]) << 24)
+                         | (i64(header[5]) << 16)
+                         | (i64(header[6]) << 8)
+                         | i64(header[7]))
 
         if masked:
             raise NotImplementedError()
@@ -245,12 +245,12 @@ class Client:
         while True:
             byte = self._io.read(1)
 
-            if len(byte) != 1:
+            if byte.length() != 1:
                 raise WebsocketError("Handshake failed.")
 
             line += byte
 
-            if len(line) < 2:
+            if line.length() < 2:
                 continue
 
             if line[-2] == u8('\r') and line[-1] == u8('\n'):
