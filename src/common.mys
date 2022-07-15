@@ -1,5 +1,4 @@
-@enum(u8)
-class OpCode:
+enum OpCode(u8):
     Continuation = 0
     Text = 1
     Binary = 2
