@@ -9,7 +9,7 @@ from .common import OpCode
 
 func _send_frame(tcp_client: TcpClient, data: bytes, op_code: OpCode):
     header = b""
-    data_size = len(data)
+    data_size = data.length()
     header += (HEADER_FIN | u8(op_code))
 
     if data_size < 126:
@@ -88,7 +88,7 @@ class Client:
 
             line += byte
 
-            if len(line) < 2:
+            if line.length() < 2:
                 continue
 
             if line[-2] == u8('\r') and line[-1] == u8('\n'):
