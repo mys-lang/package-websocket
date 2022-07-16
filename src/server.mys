@@ -139,7 +139,7 @@ class Server:
     func __init__(self):
         self._tcp_server = TcpServer()
 
-    func listen(self, port: u32):
+    func listen(self, port: i64):
         """Start listening for clients to connect to given `port` on any
         interface.
 

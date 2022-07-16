@@ -259,7 +259,7 @@ class Client:
         return string(line)[:-2]
 
     @raises(NetError, WebsocketError)
-    func connect(self, host: string, port: u32, path: string = "/"):
+    func connect(self, host: string, port: i64, path: string = "/"):
         """Connect to the server identified by given `host` and
         `port`. Non-secure websockets normally use port 80, while
         secure use port 443.
@@ -353,7 +353,7 @@ class _ConnectionFiber(Fiber):
         client.send_text("Hi!")
 
 test connection():
-    port: u32 = 60101
+    port = 60101
 
     server = Server()
     server.listen(port)
