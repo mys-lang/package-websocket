@@ -45,25 +45,25 @@ trait Handler:
 
     """
 
-    func on_binary(self, data: bytes):
+    func on_binary(self, data: bytes?):
         """Called when a binary message has been received from the server.
 
         """
 
-    func on_text(self, data: string):
+    func on_text(self, data: string?):
         """Called when a text message has been received from the server.
 
         """
 
 class _DefaultHandler(Handler):
-    _binary_queue: Queue[bytes]
-    _text_queue: Queue[string]
+    _binary_queue: Queue[bytes?]
+    _text_queue: Queue[string?]
 
-    func __init__(self, binary_queue: Queue[bytes], text_queue: Queue[string]):
+    func __init__(self, binary_queue: Queue[bytes?], text_queue: Queue[string?]):
         self._binary_queue = binary_queue
         self._text_queue = text_queue
 
-    func on_binary(self, data: bytes):
+    func on_binary(self, data: bytes?):
         self._binary_queue.put(data)
 
     func on_text(self, data: string):
@@ -103,7 +103,7 @@ class _ReaderFiber(Fiber):
     _io: _Io
     _handler: Handler
     _data_op_code: OpCode
-    _data: bytes
+    _data: bytes?
 
     func __init__(self, handler: Handler, io: _Io):
         self._handler = handler

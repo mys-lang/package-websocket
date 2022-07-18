@@ -113,7 +113,7 @@ class Client:
 
         _send_frame(self._tcp_client, data.to_utf8(), OpCode.Text)
 
-    func receive_binary(self) -> bytes:
+    func receive_binary(self) -> bytes?:
         """Receive a binary message from the client. Returns None if
         disconnected.
 
@@ -121,7 +121,7 @@ class Client:
 
         raise NotImplementedError()
 
-    func receive_text(self) -> string:
+    func receive_text(self) -> string?:
         """Receive a text message from the client. Returns None if
         disconnected.
 
