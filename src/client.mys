@@ -326,7 +326,7 @@ class Client:
 
         _send_frame(self._io, data.to_utf8(), OpCode.Text)
 
-    func receive_binary(self) -> bytes:
+    func receive_binary(self) -> bytes?:
         """Receive a binary message from the server. This method can only be
         used if no handler was passed to __init__(). Returns ``None``
         if disconnected.
@@ -335,7 +335,7 @@ class Client:
 
         return self._binary_queue.get()
 
-    func receive_text(self) -> string:
+    func receive_text(self) -> string?:
         """Receive a text message from the server. This method can only be
         used if no handler was passed to __init__(). Returns ``None``
         if disconnected.
