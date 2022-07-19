@@ -203,13 +203,13 @@ class Client:
     _handler: Handler
     _tcp_client: TcpClient
     _reader_fiber: _ReaderFiber
-    _binary_queue: Queue[bytes]
-    _text_queue: Queue[string]
+    _binary_queue: Queue[bytes]?
+    _text_queue: Queue[string]?
     _stcp_client: StcpClient
     _secure: bool
     _io: _Io
 
-    func __init__(self, handler: Handler = None, secure: bool = False):
+    func __init__(self, handler: Handler? = None, secure: bool = False):
         """Create a client. Give `handler` as ``None``` to use the default
         handler which puts received messages on message queues that
         are read from with the `receive_binary()` and `receive_text()`
