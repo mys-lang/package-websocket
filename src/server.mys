@@ -39,7 +39,7 @@ class Client:
 
     """
 
-    path: string
+    path: string?
     _tcp_client: TcpClient
     _connected: bool
 
@@ -47,7 +47,7 @@ class Client:
         self.path = None
         self._tcp_client = tcp_client
         self._connected = True
-        sec_websocket_key: string = None
+        sec_websocket_key: string? = None
 
         while True:
             line = self._read_line()
@@ -83,7 +83,7 @@ class Client:
         while True:
             byte = self._tcp_client.read(1)
 
-            if byte is None:
+            if byte.length() == 0:
                 raise WebsocketError("Handshake failed.")
 
             line += byte

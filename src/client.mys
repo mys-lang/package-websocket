@@ -2,6 +2,7 @@ from base64 import encode as base64_encode
 from fiber import CancelledError
 from fiber import Fiber
 from fiber import Queue
+from fiber import QueueError
 from net.stcp.client import Client as StcpClient
 from net.tcp.client import Client as TcpClient
 from random.pseudo import randbytes
@@ -45,21 +46,26 @@ trait Handler:
 
     """
 
-    func on_binary(self, data: bytes?):
+    func on_binary(self, data: bytes):
         """Called when a binary message has been received from the server.
 
         """
 
-    func on_text(self, data: string?):
+    func on_text(self, data: string):
         """Called when a text message has been received from the server.
 
         """
 
-class _DefaultHandler(Handler):
-    _binary_queue: Queue[bytes?]
-    _text_queue: Queue[string?]
+    func on_disconnected(self):
+        """Called when disconnected by the server.
 
-    func __init__(self, binary_queue: Queue[bytes?], text_queue: Queue[string?]):
+        """
+
+class _DefaultHandler(Handler):
+    _binary_queue: Queue[bytes]
+    _text_queue: Queue[string]
+
+    func __init__(self, binary_queue: Queue[bytes], text_queue: Queue[string]):
         self._binary_queue = binary_queue
         self._text_queue = text_queue
 
@@ -68,6 +74,10 @@ class _DefaultHandler(Handler):
 
     func on_text(self, data: string):
         self._text_queue.put(data)
+
+    func on_disconnected(self):
+        self._binary_queue.close()
+        self._text_queue.close()
 
 func _send_frame(io: _Io, data: bytes, op_code: OpCode):
     header = b""
@@ -190,8 +200,7 @@ class _ReaderFiber(Fiber):
         try:
             self._run()
         except _ClosedError:
-            self._handler.on_binary(None)
-            self._handler.on_text(None)
+            self._handler.on_disconnected()
         except CancelledError:
             pass
 
@@ -203,8 +212,8 @@ class Client:
     _handler: Handler
     _tcp_client: TcpClient
     _reader_fiber: _ReaderFiber
-    _binary_queue: Queue[bytes]?
-    _text_queue: Queue[string]?
+    _binary_queue: Queue[bytes]
+    _text_queue: Queue[string]
     _stcp_client: StcpClient
     _secure: bool
     _io: _Io
@@ -217,17 +226,14 @@ class Client:
 
         """
 
+        # ToDo: Assign to self._binary_queue directly when Mys supports it.
+        binary_queue = Queue[bytes]()
+        text_queue = Queue[string]()
+        self._binary_queue = binary_queue
+        self._text_queue = text_queue
+
         if handler is None:
-            # ToDo: Assign to self._binary_queue directly when Mys
-            #       supports it.
-            binary_queue = Queue[bytes]()
-            text_queue = Queue[string]()
             handler = _DefaultHandler(binary_queue, text_queue)
-            self._binary_queue = binary_queue
-            self._text_queue = text_queue
-        else:
-            self._binary_queue = None
-            self._text_queue = None
 
         self._handler = handler
         self._secure = secure
@@ -258,7 +264,6 @@ class Client:
 
         return string(line)[:-2]
 
-    @raises(NetError, WebsocketError)
     func connect(self, host: string, port: i64, path: string = "/"):
         """Connect to the server identified by given `host` and
         `port`. Non-secure websockets normally use port 80, while
@@ -326,19 +331,19 @@ class Client:
 
         _send_frame(self._io, data.to_utf8(), OpCode.Text)
 
-    func receive_binary(self) -> bytes?:
+    func receive_binary(self) -> bytes:
         """Receive a binary message from the server. This method can only be
-        used if no handler was passed to __init__(). Returns ``None``
-        if disconnected.
+        used if no handler was passed to __init__(). Raises and error if
+        disconnected.
 
         """
 
         return self._binary_queue.get()
 
-    func receive_text(self) -> string?:
+    func receive_text(self) -> string:
         """Receive a text message from the server. This method can only be
-        used if no handler was passed to __init__(). Returns ``None``
-        if disconnected.
+        used if no handler was passed to __init__(). Raises and error if
+        disconnected.
 
         """
 
