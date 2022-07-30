@@ -274,6 +274,15 @@ class Client:
 
         """
 
+        self._binary_queue.open()
+        self._text_queue.open()
+
+        while self._binary_queue.length() > 0:
+            self._binary_queue.get()
+
+        while self._text_queue.length() > 0:
+            self._text_queue.get()
+
         if self._secure:
             self._stcp_client.connect(host, port)
         else:
